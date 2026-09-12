@@ -20,6 +20,12 @@ Full changelogs are split by version range for easier navigation:
 
 ## [Unreleased]
 
+### The validators page stops hammering the chain (2026-09-12)
+<!-- categories: memba, network -->
+- **Every open validators tab was making about two hundred requests a minute to a single gno.land node**, and the telemetry view more. That load grew with each person watching, against one machine — exactly the sort of traffic that gets an application rate-limited or blocked, and it was heaviest precisely when the chain was already struggling.
+- **Blocks never change once written, so we now only ask for the ones we have not already seen.** After the first load a refresh typically fetches a handful of new blocks instead of a hundred old ones. The roster also shows a shorter, quite sufficient signing history; the full history stays on each validator's own page.
+- **A validator that is completely offline now shows as missing every block, instead of showing nothing at all.** The chain records a missed block as an empty slot with no name attached, so a validator that missed *all* of them was invisible in this view — the one case most worth seeing.
+
 ### The validator telemetry view stops hiding half of itself on a phone (2026-09-12)
 <!-- categories: memba, network -->
 - **On a phone, the live telemetry view was cutting off roughly half of every panel.** Not scrolling it out of view — removing it, with no scrollbar or any other hint that something was missing. Measured on a 390px screen, each card was drawn 556px wide inside a 313px column. Consensus state, peer lists and node details were all partly unreadable.
