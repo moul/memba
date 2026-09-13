@@ -20,6 +20,11 @@ Full changelogs are split by version range for easier navigation:
 
 ## [Unreleased]
 
+### See who can change the validator set, and how much failure the network can take (2026-09-13)
+<!-- categories: memba, network, gno-core -->
+- **The Network tab on the validators page now has a "Governance readiness" panel.** It shows how many members GovDAO has — the only people able to propose adding or removing a validator — and notes plainly when a single member could create and pass such a proposal alone, which is the case on gno.land today.
+- **It also shows how much failure the network can currently absorb:** the number of active validators, the voting power needed to agree on a block, and how many validators could go offline before the chain stops. Alongside it, it spells out what would happen if the largest validator went offline or were removed — on today's network that would leave a chain any single remaining validator could halt.
+- **It is information only.** It offers no button to act against any validator, and if membership can't be read it says so rather than showing zero.
 ### The validators pages fit a phone properly (2026-09-13)
 <!-- categories: memba, network -->
 - **On a phone you no longer scroll past a screen and a half of summary cards before reaching the first validator.** The five network stat cards now sit two to a row instead of stacking one per row, and the page stops spending a sixth of the screen width on empty margins.
