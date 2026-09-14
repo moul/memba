@@ -1,6 +1,6 @@
 # Implementation-plan proposal
 
-Status: **proposed, not authorized to execute**. This plan follows the confirmed decisions in DECISIONS.md. The first gate is approval of the detailed Validators proof and remaining responsive/state designs. Branding runs separately and does not block the pilot.
+Status: **proposed, not authorized to execute**. This plan follows the confirmed decisions in DECISIONS.md. The first gate is approval of the detailed Validators proof and remaining responsive/state designs. The selected 01 / Folded M branding runs through separate asset refinement and does not block the pilot.
 
 ## Outcome and constraints
 
@@ -22,7 +22,7 @@ Each row is a reviewable unit, not a promise that one PR can safely contain all 
 | P5 · Pilot validation and release proposal | Existing visual/a11y/mobile/validator suites and proof documentation | All acceptance criteria below met on pinned preview. User reviews real rendered pages, not only raster concepts. Pilot remains off in production until normal release approval. | Integration/review owner. Disable approved preview mechanism or revert bounded PRs. |
 | P6 · Navigation and shell adoption | `lib/navManifest.ts`, sidebar/mobile shell, command palette and route tests | After successful pilot and exact IA approval. Map every existing route to its new discoverable entry; keep legacy URLs/query behavior. Validate visitor/member navigation independently. | Foundation/integration owner. Revert presentation/manifest change without route migration. |
 | P7 · Feature-family waves | Bounded ownership by feature family, using approved primitives | After P5, and P6 when a wave relies on new navigation. Separate waves listed below; no one giant migration PR. | One feature owner per wave plus shared-foundation reviewer. Per-wave revert. |
-| B1 · Branding and share previews | Study assets first; later selected SVG/icon/OG assets; metadata/edge handler in a separate PR | Logo choice and actual-size checks first. Separate artwork adoption from crawler routing/metadata changes. UI pilot can ship with the current logo. | Brand owner; metadata engineer separately. Independently reversible assets and handler changes. |
+| B1 · Branding and share previews | Study assets first; later selected SVG/icon/OG assets; metadata/edge handler in a separate PR | Folded M direction selected; vector refinement and actual-size checks next. Separate artwork adoption from crawler routing/metadata changes. UI pilot can ship with the current logo. | Brand owner; metadata engineer separately. Independently reversible assets and handler changes. |
 
 ## Preview mechanism proposed for P2
 

@@ -4,7 +4,7 @@
 
 Memba has substantial functionality, but its presentation still asks users to interpret a developer-oriented ecosystem dashboard. The strongest opportunity is to make everyday governance and treasury work immediately understandable, while preserving technical depth and truthful network status.
 
-**Confirmed direction:** A, Quiet Confidence, for DAO/treasury teams, mainstream communities and entrepreneurs/companies building on gno.land. Follow the system theme by default, with true `#000000` Black instead of B's charcoal/slate palette. Simplified navigation is accepted in principle. Validators is the first design proof; branding is explored separately.
+**Confirmed direction:** A, Quiet Confidence, for DAO/treasury teams, mainstream communities and entrepreneurs/companies building on gno.land. Follow the system theme by default, with true `#000000` Black instead of B's charcoal/slate palette. Simplified navigation is accepted in principle. Validators is the first design proof. **01 / Folded M** is selected for separate branding refinement.
 
 ## Current round
 
@@ -42,6 +42,6 @@ The shared `/Memba` checkout was on `main` at `4a7081ec`, clean and two commits 
 
 - Approve or refine the Validators layout, default/optional columns and responsive/state behavior.
 - Review the proposed implementation sequence; no code work has started.
-- Choose a branding concept to refine independently, if desired.
+- Refine the selected Folded M into consistent vector, monochrome and small-size assets.
 
-The original A/B/C and governance boards remain below as historical exploration. Their charcoal/blue dark palette and unresolved audience questions are superseded by DECISIONS.md. The detailed navigation labels, final logo and implementation/release remain unapproved.
+The original A/B/C and governance boards remain below as historical exploration. Their charcoal/blue dark palette and unresolved audience questions are superseded by DECISIONS.md. The detailed navigation labels, final production asset specifications and implementation/release remain unapproved; the Folded M direction itself is selected.

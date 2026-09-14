@@ -1,6 +1,6 @@
 # Design decisions — round 2
 
-Status: user-confirmed direction; detailed screens, branding and implementation remain proposals.
+Status: user-confirmed product direction and Folded M branding selection; detailed screens, final asset specifications and implementation remain proposals.
 
 These decisions supersede the corresponding open questions and recommendations in the initial study. Do not treat older boards as competing approved directions.
 
@@ -13,6 +13,8 @@ These decisions supersede the corresponding open questions and recommendations i
 | D-05 | Explore branding separately; the M direction is liked, and should be tried on black with alternatives. | Produce a separate branding study. The existing deployed emblem stays in place until a logo is selected and approved for replacement. |
 | D-06 | Validators is the preferred first design proof. | Concentrate the first implementation proposal on a read-only, data-rich area. Do not start by changing treasury/signing behavior. |
 
+| D-07 | **01 / Folded M** selected as the branding direction. | Refine that geometry and teal facet treatment. Monochrome/small-size adaptations derive from 01; 02 and 03 remain historical alternatives. Selection does not by itself approve production deployment. |
+
 ## Product interpretation
 
 Professionalism here means that a newcomer can understand the next step, and an experienced team can still inspect precise information. Audience contexts can shape Overview and shortcuts, but should not create separate products or a mandatory persona-selection screen. Gno terminology should have explanations; advanced capabilities remain accessible.
@@ -21,4 +23,4 @@ Entrepreneurs should be able to understand discovery, project setup, governance,
 
 ## Remaining decisions
 
-The revised Validators proof, default/optional columns, detail behavior, mobile hierarchy, exact IA labels and the implementation plan need review. Branding selection is independent. Approval of direction A is not approval to merge application changes or deploy mainnet capabilities.
+The revised Validators proof, default/optional columns, detail behavior, mobile hierarchy, exact IA labels and the implementation plan need review. The logo direction is selected; final vector/size specifications and integration remain separate from UI approval. Approval of direction A is not approval to merge application changes or deploy mainnet capabilities.
