@@ -87,7 +87,7 @@ Assets live in `frontend/public/brand/folded-m/`. This is a controlled vector re
 - Wordmarks: Inter 600, converted to paths from the bundled font; no external font loading in exported SVGs. Preserve the existing Inter OFL notice. `generate-brand.py` regenerates the outlined lockups and sharing master with the authoring-only `fonttools[woff]` dependency.
 - App icon: black 512 × 512 canvas, centered mark. Its furthest silhouette corner is about 188 px from center, inside the 204.8 px mask-safe radius.
 - Sharing master: 1200 × 630, outlined typography, proposed copy “Govern together. Build on gno.land.” No live balances, security certification or mainnet-capability claims.
-- PNG renditions are exported from the vector masters by the browser test lane, not created by image tracing. `share.png` is suitable for a later metadata integration.
+- PNG renditions are exported from the vector masters by the browser test lane, not created by image tracing. `share.png` is suitable for a later metadata integration. After copying browser screenshots/renditions, run `prepare-review-assets.py` to remove nonvisual PNG metadata while preserving pixel/color chunks, then run the repository attribution check.
 
 Existing favicon, PWA manifest, Apple touch icon and Open Graph metadata references are not replaced. Brand activation should be its own small follow-up: wire approved filenames, verify crawler responses and image dimensions for canonical/network/DAO/proposal URLs, then review cached social cards. Entity cards should name the entity and network with a readable fallback for long names and unavailable entity data. Do not suggest that a page has mainnet capability merely because its card has the new identity.
 

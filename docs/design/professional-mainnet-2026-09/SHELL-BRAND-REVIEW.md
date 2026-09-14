@@ -37,9 +37,9 @@ Download the masters and PNG renditions from [the asset directory](../../../fron
 - **19 targeted tests passed**: complete navigation mapping, visitor/member/admin gates, addressed profiles, notifications, legacy navigation and sheet behavior.
 - **35 browser checks passed** in the isolated shell lane: Chromium, Firefox, iPhone WebKit and Pixel emulation. Includes 320–1920 px layouts, Black/Light, keyboard navigation/search, mobile focus containment/return, route scope, asset rendering and scoped axe checks.
 - Six PNG assets were exported through Chromium from the SVG masters; dimensions checked, including the 1200 × 630 card and 16/32 px favicon renditions. Firefox verifies SVG rendering in the specimen; transparent PNG export uses Chromium because this Firefox screenshot operation is unsupported.
-- Full frontend regression and the original Validators browser lane also run in the pull request's Professional preview workflow. The final CI result is linked from the PR.
+- Full frontend regression and the original Validators browser lane also run in the pull request's Professional preview workflow. The final CI result is linked from [draft PR #1196](https://github.com/samouraiworld/memba/pull/1196).
 
-The expanded shell is separately default-off (`VITE_ENABLE_PRO_SHELL=true`). The Validators body remains separately default-off (`VITE_ENABLE_PRO_UI=true`). Existing production icons, PWA identity, shared-link metadata, contracts and transaction behavior are unchanged. Nothing has been merged or deployed.
+The expanded shell is separately default-off (`VITE_ENABLE_PRO_SHELL=true`). The Validators body remains separately default-off (`VITE_ENABLE_PRO_UI=true`). Existing production icons, PWA identity, shared-link metadata, contracts and transaction behavior are unchanged. No production merge or deployment has been performed. The repository may generate a default-flags deploy preview automatically for the draft PR.
 
 ## Remaining decisions and follow-through
 
