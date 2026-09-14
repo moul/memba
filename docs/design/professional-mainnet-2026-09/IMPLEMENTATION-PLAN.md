@@ -76,3 +76,7 @@ Each handoff includes approved decision/proof versions, changed files, full vali
 P0–P5 is the authorized bounded pilot and is now ready for review. Estimate each unit against the refreshed baseline and approved state frames; do not promise a completion date for the whole product redesign yet. The major sizing variables are existing feature changes, amount of table extraction required, coverage gaps in themes and mobile, and the final optional-column behavior. Branding can proceed without delaying the pilot.
 
 The next user review is the rendered pilot. Keep production presentation off until that review and the normal PR/release process are complete.
+
+## Subsequent authorization and delivery
+
+D-10 authorizes continued autonomous work after the pilot. P6 is now a separately default-off shell preview in [#1196](https://github.com/samouraiworld/memba/pull/1196); exact IA defaults are supplied for consolidated review. B1 contains vector masters, actual-size specimens and PNG renditions, with production favicon/PWA/OG wiring still separate. The existing phase gates govern production adoption, not an additional permission request before preparing these reversible previews. P7 feature bodies remain staged, beginning with DAO/proposal presentation.

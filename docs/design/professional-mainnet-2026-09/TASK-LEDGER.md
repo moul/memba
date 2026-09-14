@@ -1,4 +1,4 @@
-# Pilot task ledger
+# Professional design task ledger
 
 Updated 2026-09-14. Autonomous pilot completion authorized; final review is consolidated in REVIEW.md. Owner: current design implementation session. Memba only. No background agents, automations, merges or deployments.
 
@@ -9,7 +9,7 @@ Updated 2026-09-14. Autonomous pilot completion authorized; final review is cons
 - P1 branch: `feat/system-theme-preference`.
 - P1 worktree: `Memba-worktrees/system-theme-preference`.
 - Separate active worktree `review-main-98b8b76` has validator accessibility work. Preserve semantic rows/sort buttons and incorporate landed changes when updating the pilot base; do not modify that checkout.
-- Decisions: D-01 through D-09. Branding: 01 / Folded M selected, asset adoption separate.
+- Decisions: D-01 through D-10. Branding: 01 / Folded M selected, asset adoption separate.
 
 | Task | Status | Owned files / dependency | Handoff |
 |---|---|---|---|
@@ -19,7 +19,8 @@ Updated 2026-09-14. Autonomous pilot completion authorized; final review is cons
 | P3 Validators presentation | In review · #1195 | `Validators.tsx`, scoped CSS, relevant validator tests | Same queries and metric derivation; responsive rendered proof. Initial local 5,017 unit tests passed; final CI unit/build/lint checks and 36 local preview browser cases pass. Larger status/pagination text and resolved-incident contrast verified after the mainline refresh. See the handoff for review limits. |
 | P4 Optional interactions | Implemented for final review · #1195 | Narrow table control surface | Grouped All columns plus health filter with Unknown implemented. Keyboard scrolling, filter/paging resets and missing data verified. Individual column preferences and saved presets/density deliberately deferred. |
 | P5 Pilot review | Awaiting user review | Reproducible preview, screenshots, validation evidence | Production flag stays off. Mixed health and missing-signal states verified. Manual screen-reader, physical-device, browser zoom and connected-wallet reviews remain rollout gates. |
-| P6+ / B1 adoption | Not started | Navigation, broader feature waves, production branding | Require their respective review gates. |
+| P6 shell / B1 artwork | In review · [#1196](https://github.com/samouraiworld/memba/pull/1196) | `feat/professional-shell-brand`, stacked on #1195; own worktree and dependency cache. Shell flag, manifest-derived presentation, SVG/PNG identity package | 19 targeted unit tests, build/lint, 35 browser checks passed locally; additional mobile search-focus checks passed. Full CI is linked from the PR. [Review pack](https://github.com/samouraiworld/memba/blob/feat/professional-shell-brand/docs/design/professional-mainnet-2026-09/SHELL-BRAND-REVIEW.md). |
+| P7 bodies / production brand activation | Next staged work | DAO/proposal body first; metadata/icons integration separately | Keep transaction and realm changes independently owned. No production flags or metadata have been activated. |
 
 ## Handoff requirements
 
@@ -39,3 +40,7 @@ Record commit and PR URLs, base changes, exact validation commands/results, fixt
 4. Approve the Light / true Black treatment for the next feature family?
 
 These decisions concern the working preview. No production release or global navigation change follows automatically.
+
+## Next-stage scope record
+
+D-10 extends autonomous implementation into a review-only navigation shell and Folded M artwork. New branch `feat/professional-shell-brand` is based on pilot head `a3f8559b`; implementation commit `a0299c27`. Main was inspected at `08f8b04b` without changing the shared checkout. See [the shell handoff](https://github.com/samouraiworld/memba/blob/feat/professional-shell-brand/docs/design/professional-mainnet-2026-09/SHELL-BRAND-HANDOFF.md) for route mapping, token specifications and ownership boundaries.

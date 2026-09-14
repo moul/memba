@@ -1,6 +1,6 @@
 # Design decisions — round 2
 
-Status: user-confirmed product direction and Folded M branding selection; pilot implementation authorized; final asset specifications and production rollout remain separate decisions.
+Status: user-confirmed product direction and Folded M branding selection; pilot and subsequent shell/brand preview implementation authorized; production rollout remains a separate decision.
 
 These decisions supersede the corresponding open questions and recommendations in the initial study. Do not treat older boards as competing approved directions.
 
@@ -16,6 +16,8 @@ These decisions supersede the corresponding open questions and recommendations i
 | D-08 | User authorized proceeding with the plan on 2026-09-14. | Begin P0–P5 in isolated, bounded PRs; retain preview-only visual rollout and separate later navigation, feature-family and branding adoption. |
 
 | D-09 | User requested autonomous continuation with review only at the end. | Finish the authorized pilot, choose routine defaults and verify them without intermediate approval requests; deliver one consolidated review package. Production merge/enablement and later feature waves remain separate. |
+
+| D-10 | User requested further autonomous continuation after the completed Validators pilot. | Proceed with B1 vector artwork and a separately default-off P6 navigation/shell preview; choose routine IA defaults for end review. This does not activate branding in production or expand transaction/realm scope. |
 
 ## Delegated implementation decisions
 
@@ -35,4 +37,4 @@ Entrepreneurs should be able to understand discovery, project setup, governance,
 
 ## Remaining decisions
 
-The revised Validators proof, default/optional columns, detail behavior, mobile hierarchy, exact IA labels need review in the rendered pilot. The logo direction is selected; final vector/size specifications and integration remain separate from UI approval. Approval of direction A is not approval to merge application changes or deploy mainnet capabilities.
+The working Validators proof and subsequent shell/brand preview are ready for end review. Exact IA labels and mobile destinations are concrete implementation defaults in PR #1196. The logo direction is selected; vector/size specifications are supplied in PR #1196; production integration remains separate from UI approval. Approval of direction A is not approval to merge application changes or deploy mainnet capabilities.

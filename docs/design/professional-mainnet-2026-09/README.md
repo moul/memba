@@ -6,6 +6,10 @@ Memba has substantial functionality, but its presentation still asks users to in
 
 **Confirmed direction:** A, Quiet Confidence, for DAO/treasury teams, mainstream communities and entrepreneurs/companies building on gno.land. Follow the system theme by default, with true `#000000` Black instead of B's charcoal/slate palette. Simplified navigation is accepted in principle. Validators is the first design proof. **01 / Folded M** is selected for separate branding refinement.
 
+## Latest review
+
+The subsequent **shell and Folded M package** is ready in [draft PR #1196](https://github.com/samouraiworld/memba/pull/1196). Start with its [review pack](https://github.com/samouraiworld/memba/blob/feat/professional-shell-brand/docs/design/professional-mainnet-2026-09/SHELL-BRAND-REVIEW.md), [live navigation preview](http://127.0.0.1:5191/mainnet/validators), or [actual-size brand specimen](http://127.0.0.1:5191/brand/folded-m/specimen.html). It adds a separate default-off shell flag and preserves the staged feature-body roadmap. Production rollout is pending.
+
 ## Working pilot
 
 **Start with [the consolidated final review](REVIEW.md).** The authorized pilot has been completed for review, including autonomous interaction decisions and expanded state/browser validation. Theme foundation: [draft PR #1194](https://github.com/samouraiworld/memba/pull/1194). The [Validators pilot in draft PR #1195](https://github.com/samouraiworld/memba/pull/1195) runs behind a default-off flag on a separate branch. [Task ledger and handoff](TASK-LEDGER.md) records scope, ownership and validation.

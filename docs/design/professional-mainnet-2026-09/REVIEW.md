@@ -4,6 +4,8 @@
 
 The authorized Validators pilot is ready for visual review. The desktop workspace now uses the available width, the primary comparison table is readable, and mobile places the roster ahead of an expandable network summary. Health and unavailable-data states remain explicit. The implementation is isolated and off by default in production.
 
+**Subsequent stage:** the [shell and Folded M review](https://github.com/samouraiworld/memba/blob/feat/professional-shell-brand/docs/design/professional-mainnet-2026-09/SHELL-BRAND-REVIEW.md) is now available in [draft PR #1196](https://github.com/samouraiworld/memba/pull/1196), with its own default-off flag. The evidence below records the preceding Validators-only pilot.
+
 ## Review in this order
 
 1. Compare **Black and Light** below. Assess hierarchy, density and the balance of comparison versus technical detail.
