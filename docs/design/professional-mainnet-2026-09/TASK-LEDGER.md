@@ -44,3 +44,7 @@ These decisions concern the working preview. No production release or global nav
 ## Next-stage scope record
 
 D-10 extends autonomous implementation into a review-only navigation shell and Folded M artwork. New branch `feat/professional-shell-brand` is based on pilot head `a3f8559b`; implementation commit `a0299c27`. Main was inspected at `08f8b04b` without changing the shared checkout. See [the shell handoff](https://github.com/samouraiworld/memba/blob/feat/professional-shell-brand/docs/design/professional-mainnet-2026-09/SHELL-BRAND-HANDOFF.md) for route mapping, token specifications and ownership boundaries.
+
+## Final shell / brand CI evidence
+
+Final implementation head: `62566f17`. [Professional preview run 34896625904](https://github.com/samouraiworld/memba/actions/runs/34896625904) passed on that exact head: **5,012 unit tests passed, 15 skipped**, production build, lint, **36 Validators browser checks** and **37 shell/brand browser checks**. Changelog, attribution and default-flags deploy-preview checks are also green. No production merge or deployment was performed. The shared checkout remains clean on `main` at `4a7081ec`.
