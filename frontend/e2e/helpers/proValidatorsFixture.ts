@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test'
 import { fulfillOnchainReads, mockChainStatus } from './onchain'
 
 /** Test-only deterministic roster, never imported by application source. */
-export async function fulfillProValidatorRoster(page: Page, mode: 'healthy' | 'mixed' | 'missing' | 'empty' | 'large' = 'healthy') {
+export async function fulfillProValidatorRoster(page: Page, mode: 'healthy' | 'mixed' | 'missing' | 'empty' | 'large' | 'resolved' = 'healthy') {
     const count = mode === 'empty' ? 0 : mode === 'large' ? 73 : mode === 'mixed' ? 4 : 3
     const ids = Array.from({ length: count }, (_, i) => i + 1)
     const hasSignatures = mode === 'healthy' || mode === 'large'
@@ -65,7 +65,7 @@ export async function fulfillProValidatorRoster(page: Page, mode: 'healthy' | 'm
             severity: n === 2 ? 'WARNING' : 'CRITICAL',
             timestamp: new Date(now - 60_000).toISOString(),
             details: n === 2 ? 'Intermittent signing detected. The operator is investigating connectivity across its infrastructure.' : 'Validator has stopped signing recent blocks.',
-        })) : []
+        })) : mode === 'resolved' ? [{ addr: rows[0].addr, moniker: rows[0].moniker, severity: 'RESOLVED', timestamp: new Date(now - 60_000).toISOString(), details: 'Normal signing resumed.' }] : []
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(path.includes('incident') ? incidents : path.includes('first_seen') ? [] : rows) })
     })
     await fulfillOnchainReads(page, ({ method }) => {

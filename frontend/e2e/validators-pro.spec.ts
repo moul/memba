@@ -36,6 +36,7 @@ for (const width of [769, 1024, 1280, 1440, 1920, 768, 390, 320]) {
             if (selector === '.k-main') continue
             if (await page.locator(selector).isVisible()) await expect(page.locator(selector)).toHaveCSS('background-color', 'rgb(0, 0, 0)')
         }
+        await expect(page.locator('.val-health-badge__label').first()).toHaveCSS('font-size', '12px')
         const clipping = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)
         expect(clipping).toBe(false)
         // These two accessible labels intentionally use the existing 1px clip.
@@ -161,6 +162,7 @@ test('larger roster pagination and filter reset', async ({ page }) => {
     await page.getByRole('button', { name: 'Next page' }).click()
     await expect(page.locator('.val-table tbody tr')).toHaveCount(23)
     await expect(page.getByText('Showing 51–73 of 73')).toBeVisible()
+    await expect(page.locator('.val-page-info')).toHaveCSS('font-size', '13px')
     await page.getByRole('combobox', { name: 'Validators per page' }).selectOption('25')
     await expect(page.getByText('Showing 1–25 of 73')).toBeVisible()
     await page.getByRole('button', { name: 'Next page' }).click()
@@ -186,4 +188,18 @@ test('mobile health filter preserves unknown data and disclosure keyboard access
     await expect(page.locator('.pro-val-overview')).toHaveAttribute('open')
     const axe = await new AxeBuilder({ page }).include('#main-content').analyze()
     expect(axe.violations).toEqual([])
+})
+
+test('resolved incident badge remains readable in both themes', async ({ page }) => {
+    await fulfillProValidatorRoster(page, 'resolved')
+    await page.goto('/pearl/validators')
+    await expect(page.locator('.val-incident-badge--resolved')).toHaveText('RESOLVED')
+    await expect(page.locator('.val-incident-badge--resolved')).toHaveCSS('font-size', '12px')
+    for (const theme of ['dark', 'light']) {
+        await page.getByRole('combobox', { name: 'Theme', exact: true }).selectOption(theme)
+        // Wait for the existing link-color transition before measuring settled contrast.
+        await expect(page.locator('.val-row-link').first()).toHaveCSS('color', theme === 'dark' ? 'rgb(245, 247, 246)' : 'rgb(23, 34, 30)')
+        const axe = await new AxeBuilder({ page }).include('#main-content').analyze()
+        expect(axe.violations).toEqual([])
+    }
 })

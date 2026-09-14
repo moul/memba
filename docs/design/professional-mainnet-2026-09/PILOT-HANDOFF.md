@@ -52,7 +52,7 @@ Rollback: keep `VITE_ENABLE_PRO_UI` absent/false; or revert this bounded present
 | `--pro-accent` | `#00d4aa` | `#006e57` | Actions and focus |
 | `--pro-hover` | `#101715` | `#f3f7f5` | Local interaction feedback |
 
-Typography uses the existing sans font, with 30px desktop / 26px mobile titles, 14px table text, 13px column headings and 12px supporting metadata. Numerical columns use tabular numbers. Existing semantic status colors remain intact and have mixed-state axe coverage in both themes.
+Typography uses the existing sans font, with 30px desktop / 26px mobile titles, 14px table text, 13px column headings and 12px supporting metadata. Numerical columns use tabular numbers. Existing semantic health colors remain intact. Incident/status labels explicitly use 12px, pagination uses 13px, and the resolved incident fill is darkened to #007f59 for white-text contrast. Mixed-state and resolved-incident axe checks cover both themes.
 
 | Width | Layout and controls |
 |---|---|

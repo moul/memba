@@ -142,3 +142,11 @@
 .k-pro-ui .pro-val-empty details { margin-bottom: 16px; overflow-wrap: anywhere; }
 .k-pro-ui .pro-val-empty summary { cursor: pointer; padding: 8px 0; }
 .k-pro-ui .pro-val-health-filter { flex-shrink: 0; }
+
+/* Override legacy child sizes as well as the badge container. */
+.k-pro-ui :is(.val-health-badge__label, .val-health-badge__icon, .val-incident-badge) { font-size: 12px; }
+.k-pro-ui .val-incident-badge { font-family: var(--font-sans); letter-spacing: 0; }
+.k-pro-ui .val-incident-badge--resolved { background: #007f59; color: #fff; }
+.k-pro-ui :is(.val-page-btn, .val-page-info) { font: 400 13px var(--font-sans); }
+.k-pro-ui .val-page-btn { min-height: 40px; border-color: var(--pro-control-border); }
+@media (max-width: 768px) { .k-pro-ui .val-page-btn { min-height: 44px; } }
