@@ -13,8 +13,19 @@ These decisions supersede the corresponding open questions and recommendations i
 | D-05 | Explore branding separately; the M direction is liked, and should be tried on black with alternatives. | Produce a separate branding study. The existing deployed emblem stays in place until a logo is selected and approved for replacement. |
 | D-06 | Validators is the preferred first design proof. | Concentrate the first implementation proposal on a read-only, data-rich area. Do not start by changing treasury/signing behavior. |
 | D-07 | **01 / Folded M** selected as the branding direction. | Refine that geometry and teal facet treatment. Monochrome/small-size adaptations derive from 01; 02 and 03 remain historical alternatives. Selection does not by itself approve production deployment. |
-
 | D-08 | User authorized proceeding with the plan on 2026-09-14. | Begin P0–P5 in isolated, bounded PRs; retain preview-only visual rollout and separate later navigation, feature-family and branding adoption. |
+
+| D-09 | User requested autonomous continuation with review only at the end. | Finish the authorized pilot, choose routine defaults and verify them without intermediate approval requests; deliver one consolidated review package. Production merge/enablement and later feature waves remain separate. |
+
+## Delegated implementation decisions
+
+- Keep grouped **All columns** instead of introducing a per-column preference editor in the first pilot.
+- Add an explicit health filter including **Unknown**. Do not interpret missing monitoring as zero, or ignore valid signing evidence.
+- Keep the mobile overview collapsed, with the complete network summary one disclosure away.
+- Show non-healthy explanations directly in desktop rows. Preserve the existing source/health engine.
+- Keep filter/column preferences ephemeral; defer saved layouts and density controls until use demonstrates a need.
+
+These are implemented defaults for final review, not new product commitments or requests for intermediate approval.
 
 ## Product interpretation
 

@@ -1,6 +1,6 @@
 # Implementation-plan proposal
 
-Status: **P0–P5 pilot authorized to begin on 2026-09-14** by the user: “OK, what’s next? Can we start proceeding the plan?” This authorizes isolated implementation and a reviewable preview. It does not authorize automatic merge, production enablement, later feature waves or logo replacement. Responsive/state details and provisional table defaults will be reviewed in the rendered pilot. See [TASK-LEDGER.md](TASK-LEDGER.md).
+Status: **P0–P5 pilot implemented for final review on 2026-09-14** by the user: “OK, what’s next? Can we start proceeding the plan?” This authorizes isolated implementation and a reviewable preview. It does not authorize automatic merge, production enablement, later feature waves or logo replacement. The user subsequently delegated autonomous completion. Responsive/state details and implemented table defaults are consolidated in [REVIEW.md](REVIEW.md). See [TASK-LEDGER.md](TASK-LEDGER.md).
 
 ## Outcome and constraints
 
@@ -18,7 +18,7 @@ Each row is a reviewable unit, not a promise that one PR can safely contain all 
 | P1 · Theme preference behavior | `frontend/src/lib/themeStore.ts`, its callers in topbar/mobile/command palette/settings, focused theme tests | Preserve resolved `light/dark` compatibility and existing explicit choices. Add System / Light / Black preference, OS-change listener only for System, storage-failure fallback and cross-tab synchronization. Keep existing palettes in this PR. | Foundation owner. Revert preference behavior with backward-compatible storage values. |
 | P2 · Scoped visual foundations and width contract | `frontend/src/components/layout/Layout.tsx`, shared shell styles in `index.css`, proposed scoped pro styles/component tokens; relevant layout tests | After P0/P1. Add route-scoped fluid layout and A light/black tokens for the pilot only. Do not replace legacy global tokens wholesale. Verify unaffected route screenshots. | Same foundation owner; exclusive ownership of shared shell/token files. Revert scoped styles or disable presentation preview. |
 | P3 · Validators presentation | `pages/Validators.tsx`, `pages/validators.css`, relevant `components/validators/*`; `Validators.table.test.tsx` and mobile tests | After P2. Compact metric strip, readable typography and default table/list, preserve candidate/node tabs, source/copy/review links, pagination, expert metrics and existing detail routes. No query/computation changes. | Validators owner, receiving a frozen component/layout contract. Revert presentation PR or preview switch. |
-| P4 · Optional table interactions | Proposed column chooser and health filter, narrow new UI components plus interaction tests | After P3. Independently approve defaults; all fields remain accessible. Keyboard controls, sorting, paging and unknown-health behavior verified. Defer saved presets and density settings unless separately approved. | Validators owner. Revert independent interaction layer; keep basic presentation. |
+| P4 · Optional table interactions | Proposed column chooser and health filter, narrow new UI components plus interaction tests | After P3. Use delegated defaults for final review; all fields remain accessible. Keyboard controls, sorting, paging and unknown-health behavior verified. Defer saved presets and density settings unless separately approved. | Validators owner. Revert independent interaction layer; keep basic presentation. |
 | P5 · Pilot validation and release proposal | Existing visual/a11y/mobile/validator suites and proof documentation | All acceptance criteria below met on pinned preview. User reviews real rendered pages, not only raster concepts. Pilot remains off in production until normal release approval. | Integration/review owner. Disable approved preview mechanism or revert bounded PRs. |
 | P6 · Navigation and shell adoption | `lib/navManifest.ts`, sidebar/mobile shell, command palette and route tests | After successful pilot and exact IA approval. Map every existing route to its new discoverable entry; keep legacy URLs/query behavior. Validate visitor/member navigation independently. | Foundation/integration owner. Revert presentation/manifest change without route migration. |
 | P7 · Feature-family waves | Bounded ownership by feature family, using approved primitives | After P5, and P6 when a wave relies on new navigation. Separate waves listed below; no one giant migration PR. | One feature owner per wave plus shared-foundation reviewer. Per-wave revert. |
@@ -51,7 +51,7 @@ Theme preference behavior in P1 is global; the new palette in P2 is scoped to th
 
 Use existing tests as a starting point: `pages/Validators.table.test.tsx`, `pages/Validators.test.tsx`, `pages/validatorThemeRegression.test.ts`, `e2e/validators.spec.ts`, `e2e/desktop-layout.spec.ts`, and mobile validator/shell tests. Check current test setup and network fixtures before execution. Add tests for new behavior and actual observed regressions; do not mirror CSS implementation in a large brittle snapshot suite.
 
-For every code PR run the repository's applicable required build/lint/test checks and disclose any baseline failure separately. This design-only round validates documents/images, not application runtime. Tests named here are planned, not claimed as run.
+For every code PR run the repository's applicable required build/lint/test checks and disclose any baseline failure separately. This is the sequence and acceptance contract. Executed checks and remaining rollout gates are recorded in the pilot handoff and REVIEW.md; named future-wave checks are not claimed as run.
 
 ## Later waves after the pilot
 
@@ -65,7 +65,7 @@ The audit inventory remains the completeness checklist. Waves can be reordered a
 
 ## Agent-compatible coordination
 
-Before implementation begins, create a small versioned task ledger in this study directory with task ID, base SHA, branch/worktree, owner, file list, dependency, status, PR and handoff. Named human or agent owners can be assigned later. Proposed statuses: ready, active, blocked on dependency, in review, complete. Record why a task is blocked and which owner can resolve it.
+Maintain the versioned task ledger in this study directory with task ID, base SHA, branch/worktree, owner, file list, dependency, status, PR and handoff. Named human or agent owners can be assigned later. Proposed statuses: ready, active, blocked on dependency, in review, complete. Record why a task is blocked and which owner can resolve it.
 
 One foundation owner serializes changes to global styles, theme store, shell and navigation manifest. A feature owner edits only the assigned route/components. If an overlapping feature session lands changes, update the baseline and adapt; never reset its work. Parallel work is appropriate only after interfaces and file ownership are stable. No background agents or automation are started by this document.
 
@@ -73,6 +73,6 @@ Each handoff includes approved decision/proof versions, changed files, full vali
 
 ## Scope and estimates
 
-Commit to P0–P5 as a bounded pilot only after plan review. Estimate each unit against the refreshed baseline and approved state frames; do not promise a completion date for the whole product redesign yet. The major sizing variables are existing feature changes, amount of table extraction required, coverage gaps in themes and mobile, and the final optional-column behavior. Branding can proceed without delaying the pilot.
+P0–P5 is the authorized bounded pilot and is now ready for review. Estimate each unit against the refreshed baseline and approved state frames; do not promise a completion date for the whole product redesign yet. The major sizing variables are existing feature changes, amount of table extraction required, coverage gaps in themes and mobile, and the final optional-column behavior. Branding can proceed without delaying the pilot.
 
 The next user review is the rendered pilot. Keep production presentation off until that review and the normal PR/release process are complete.

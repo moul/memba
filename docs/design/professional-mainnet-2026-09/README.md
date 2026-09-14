@@ -8,7 +8,7 @@ Memba has substantial functionality, but its presentation still asks users to in
 
 ## Working pilot
 
-Implementation has started with the user's authorization. Theme foundation: [draft PR #1194](https://github.com/samouraiworld/memba/pull/1194). The [Validators pilot in draft PR #1195](https://github.com/samouraiworld/memba/pull/1195) runs behind a default-off flag on a separate branch. [Task ledger and handoff](TASK-LEDGER.md) records scope, ownership and validation.
+**Start with [the consolidated final review](REVIEW.md).** The authorized pilot has been completed for review, including autonomous interaction decisions and expanded state/browser validation. Theme foundation: [draft PR #1194](https://github.com/samouraiworld/memba/pull/1194). The [Validators pilot in draft PR #1195](https://github.com/samouraiworld/memba/pull/1195) runs behind a default-off flag on a separate branch. [Task ledger and handoff](TASK-LEDGER.md) records scope, ownership and validation.
 
 These are **rendered application screenshots using synthetic test fixtures**, labelled in each frame; they are not live mainnet telemetry.
 
