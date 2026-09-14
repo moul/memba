@@ -9,7 +9,7 @@ Updated 2026-09-14. Autonomous pilot completion authorized; final review is cons
 - P1 branch: `feat/system-theme-preference`.
 - P1 worktree: `Memba-worktrees/system-theme-preference`.
 - Separate active worktree `review-main-98b8b76` has validator accessibility work. Preserve semantic rows/sort buttons and incorporate landed changes when updating the pilot base; do not modify that checkout.
-- Decisions: D-01 through D-10. Branding: 01 / Folded M selected, asset adoption separate.
+- Decisions: D-01 through D-11. Branding: 01 / Folded M selected, asset adoption separate.
 
 | Task | Status | Owned files / dependency | Handoff |
 |---|---|---|---|
@@ -20,7 +20,8 @@ Updated 2026-09-14. Autonomous pilot completion authorized; final review is cons
 | P4 Optional interactions | Implemented for final review · #1195 | Narrow table control surface | Grouped All columns plus health filter with Unknown implemented. Keyboard scrolling, filter/paging resets and missing data verified. Individual column preferences and saved presets/density deliberately deferred. |
 | P5 Pilot review | Awaiting user review | Reproducible preview, screenshots, validation evidence | Production flag stays off. Mixed health and missing-signal states verified. Manual screen-reader, physical-device, browser zoom and connected-wallet reviews remain rollout gates. |
 | P6 shell / B1 artwork | In review · [#1196](https://github.com/samouraiworld/memba/pull/1196) | `feat/professional-shell-brand`, stacked on #1195; own worktree and dependency cache. Shell flag, manifest-derived presentation, SVG/PNG identity package | 19 targeted unit tests, build/lint, 35 browser checks passed locally; additional mobile search-focus checks passed. Full CI is linked from the PR. [Review pack](https://github.com/samouraiworld/memba/blob/feat/professional-shell-brand/docs/design/professional-mainnet-2026-09/SHELL-BRAND-REVIEW.md). |
-| P7 bodies / production brand activation | Next staged work | DAO/proposal body first; metadata/icons integration separately | Keep transaction and realm changes independently owned. No production flags or metadata have been activated. |
+| P7 DAO / proposal readers | In review · [#1197](https://github.com/samouraiworld/memba/pull/1197) | `feat/professional-governance`, based on #1196. Scoped route flag, overview/list/member links, proposal reading layout, offline browser tests | 35 targeted units + 10 transaction parity tests passed. Lint/build, 42 browser cases and 8 final contrast/visual checks passed locally. Final-head full CI pending; see evidence below. |
+| P8 remaining bodies / production brand activation | Later staged work | DAO directory/onboarding, Home and remaining feature families; metadata/icons integration separately | No production flags or metadata activated. Resolve the verified list/detail status mismatch before mainnet rollout. |
 
 ## Handoff requirements
 
@@ -48,3 +49,14 @@ D-10 extends autonomous implementation into a review-only navigation shell and F
 ## Final shell / brand CI evidence
 
 Final implementation head: `62566f17`. [Professional preview run 34896625904](https://github.com/samouraiworld/memba/actions/runs/34896625904) passed on that exact head: **5,012 unit tests passed, 15 skipped**, production build, lint, **36 Validators browser checks** and **37 shell/brand browser checks**. Changelog, attribution and default-flags deploy-preview checks are also green. No production merge or deployment was performed. The shared checkout remains clean on `main` at `4a7081ec`.
+
+## Governance stage handoff
+
+- Decision D-11; branch `feat/professional-governance`, worktree `Memba-worktrees/professional-governance`, based on shell head `62566f17`.
+- Implementation `6154abee`; final review-document head `3c752565`; draft [#1197](https://github.com/samouraiworld/memba/pull/1197).
+- [Review pack](https://github.com/samouraiworld/memba/blob/feat/professional-governance/docs/design/professional-mainnet-2026-09/GOVERNANCE-REVIEW.md) and [technical handoff](https://github.com/samouraiworld/memba/blob/feat/professional-governance/docs/design/professional-mainnet-2026-09/GOVERNANCE-HANDOFF.md).
+- Independent default-off `VITE_ENABLE_PRO_GOVERNANCE`. Real local preview on port 5194; tests on strict port 5195; copied dependencies isolate the Vite cache. The older 5188 and 5191 previews remain available.
+- Scope: direct overview counts, compact power disclosure, searchable status/history list, keyboard-accessible proposal/member links, responsive reading/voting columns, truthful missing-data copy. Existing transaction builders, permissions, polling and feature routes are preserved. Creation, treasury, full members, channels and plugins keep their existing feature presentation.
+- Live inspection verified mainnet DAO and proposal loading without connecting a wallet. It also reproduced an existing status inconsistency: GovDAO proposal #4 is passed in the list but ACTIVE in the detail page on both this preview and unchanged pilot head `a3f8559b`. Treat this as a mainnet rollout blocker. Do not silently alter signing eligibility in a style PR; assign a separate read/parser change with actual realm-render regression fixtures.
+- The professional reader reports absent thresholds as unavailable instead of inheriting the legacy default-60% quorum claim. It does not infer missing vote totals from percentages.
+- Manual screen-reader, physical-device, connected-wallet visual review and source-parser correctness remain release gates. This preview has not been merged or deployed to production.

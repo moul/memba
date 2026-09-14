@@ -1,6 +1,6 @@
 # Design decisions — round 2
 
-Status: user-confirmed product direction and Folded M branding selection; pilot and subsequent shell/brand preview implementation authorized; production rollout remains a separate decision.
+Status: user-confirmed product direction and Folded M branding selection; pilot, shell/brand and governance-reader preview implementation authorized; production rollout remains a separate decision.
 
 These decisions supersede the corresponding open questions and recommendations in the initial study. Do not treat older boards as competing approved directions.
 
@@ -18,6 +18,8 @@ These decisions supersede the corresponding open questions and recommendations i
 | D-09 | User requested autonomous continuation with review only at the end. | Finish the authorized pilot, choose routine defaults and verify them without intermediate approval requests; deliver one consolidated review package. Production merge/enablement and later feature waves remain separate. |
 
 | D-10 | User requested further autonomous continuation after the completed Validators pilot. | Proceed with B1 vector artwork and a separately default-off P6 navigation/shell preview; choose routine IA defaults for end review. This does not activate branding in production or expand transaction/realm scope. |
+
+| D-11 | User requested further autonomous continuation after the shell/brand preview. | Proceed with a separately default-off DAO overview/proposal reader slice, preserve transaction payloads and restrictions, and provide one end-review package. Mainnet status/read correctness is a separate rollout gate. |
 
 ## Delegated implementation decisions
 
