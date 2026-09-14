@@ -20,6 +20,7 @@ for (const theme of ['dark', 'light'] as const) {
         await expect(sidebar.getByRole('link', { name: 'Validators', exact: true })).toHaveAttribute('aria-current', 'page')
         await expect(sidebar.locator('img')).toHaveAttribute('src', '/brand/folded-m/mark.svg')
         await expect(page.locator('.val-row-link').first()).toBeVisible()
+        expect(await page.locator('.val-table-wrap').evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true)
         await expect(sidebar.getByRole('link', { name: 'Multisig', exact: true })).toHaveCount(0)
         await page.evaluate(() => {
             const note = document.createElement('span'); note.textContent = 'Test fixture'; note.style.cssText = 'font-size:12px;color:var(--pro-secondary)'; document.querySelector('.val-header')!.appendChild(note)
@@ -38,12 +39,16 @@ for (const theme of ['dark', 'light'] as const) {
     })
 }
 
-for (const width of [320, 390, 768, 769, 1024, 1920]) {
+for (const width of [320, 390, 768, 769, 1024, 1280, 1920]) {
     test(`responsive navigation fits ${width}px${width < 769 ? ' mobile' : ''}`, async ({ page }) => {
         await page.setViewportSize({ width, height: 1000 })
         await page.goto('/pearl/validators')
         await expect(page.getByTestId('validators-page')).toBeVisible()
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+        if (width >= 1280) {
+            await expect(page.locator('.val-row-link').first()).toBeVisible()
+            expect(await page.locator('.val-table-wrap').evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true)
+        }
         if (width < 769) {
             const bar = page.getByTestId('mobile-tabbar')
             await expect(bar.getByRole('link')).toHaveCount(4)

@@ -2,7 +2,7 @@
 
 **Ready for design review:** the selected Folded M identity, a working professional navigation shell, and an exportable sharing-card proposal. The existing Validators pilot remains the first migrated feature body.
 
-Start with the [live shell preview](http://127.0.0.1:5191/mainnet/validators) and [brand specimen](http://127.0.0.1:5191/brand/folded-m/specimen.html). The live app reads the configured network; the screenshots below use clearly identified synthetic validator fixtures.
+Start with the [live shell preview](http://127.0.0.1:5191/mainnet/validators) and [brand specimen](http://127.0.0.1:5191/brand/folded-m/specimen.html). The live app reads the configured network; the screenshots below use clearly identified synthetic validator fixtures. Its local build-time availability flags can differ from the deployed application.
 
 ## What changed
 
@@ -35,7 +35,7 @@ Download the masters and PNG renditions from [the asset directory](../../../fron
 
 - Lint and TypeScript/production build passed.
 - **19 targeted tests passed**: complete navigation mapping, visitor/member/admin gates, addressed profiles, notifications, legacy navigation and sheet behavior.
-- **35 browser checks passed** in the isolated shell lane: Chromium, Firefox, iPhone WebKit and Pixel emulation. Includes 320–1920 px layouts, Black/Light, keyboard navigation/search, mobile focus containment/return, route scope, asset rendering and scoped axe checks.
+- **35 browser checks passed** in the initial complete shell lane, followed by **8 focused desktop checks** that explicitly verify default table columns fit at 1280/1440/1920 px with the wider sidebar. The final CI lane contains 37 cases: Chromium, Firefox, iPhone WebKit and Pixel emulation. Includes 320–1920 px layouts, Black/Light, keyboard navigation/search, mobile focus containment/return, route scope, asset rendering and scoped axe checks.
 - Six PNG assets were exported through Chromium from the SVG masters; dimensions checked, including the 1200 × 630 card and 16/32 px favicon renditions. Firefox verifies SVG rendering in the specimen; transparent PNG export uses Chromium because this Firefox screenshot operation is unsupported.
 - Full frontend regression and the original Validators browser lane also run in the pull request's Professional preview workflow. The final CI result is linked from [draft PR #1196](https://github.com/samouraiworld/memba/pull/1196).
 
