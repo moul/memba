@@ -12,7 +12,6 @@ These decisions supersede the corresponding open questions and recommendations i
 | D-04 | Simplifying navigation and regrouping discovery/community features is acceptable. | Proceed with detailed IA proposals, preserve every feature and deep link, validate that Explore remains easy to navigate. Exact labels and mobile destinations are not yet approved. |
 | D-05 | Explore branding separately; the M direction is liked, and should be tried on black with alternatives. | Produce a separate branding study. The existing deployed emblem stays in place until a logo is selected and approved for replacement. |
 | D-06 | Validators is the preferred first design proof. | Concentrate the first implementation proposal on a read-only, data-rich area. Do not start by changing treasury/signing behavior. |
-
 | D-07 | **01 / Folded M** selected as the branding direction. | Refine that geometry and teal facet treatment. Monochrome/small-size adaptations derive from 01; 02 and 03 remain historical alternatives. Selection does not by itself approve production deployment. |
 
 ## Product interpretation
