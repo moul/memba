@@ -58,3 +58,10 @@ Remaining gates: manual screen-reader and physical-device review, connected-wall
 ## Local verification result
 
 Lint and the default production build passed. The full governance suite passed 42 browser cases; after the final #000 surface adjustment, all 8 affected desktop/mobile visual and accessibility cases passed again. CI repeats the complete suite on the published head. The existing Vite large-chunk warning remains; no dependency or bundler threshold was changed.
+
+## Known mainnet rollout blocker
+
+Live read-only inspection found that GovDAO proposal #4 appears as **Awaiting execution** in the overview but **ACTIVE** in the detail reader. The unchanged reader at pilot head `a3f8559b` reproduces the same ACTIVE state, so this is not introduced by the professional presentation. Its legacy voting summary also substitutes a 60% threshold where the new reader correctly reports the absent configuration as unavailable.
+
+The status mismatch must be resolved in a separately owned read/parser change before mainnet rollout. The existing `getProposalDetail` status parser scans broad text before its explicit Status fallback; investigate that parsing contract against actual realm render output, without changing signing eligibility incidentally. This slice preserves the existing transaction behavior and does not claim the live proposal is actionable. No wallet was connected during comparison.
+

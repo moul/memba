@@ -12,6 +12,12 @@ The approved Quiet Confidence direction now extends to DAO overviews and proposa
 - A readable proposal column beside recorded votes, DAO context and the existing action controls; a single column on smaller screens.
 - System appearance, Light and true Black surfaces. Existing capability and wallet notices remain visible.
 
+## Known mainnet rollout blocker
+
+Live read-only inspection found that GovDAO proposal #4 appears as **Awaiting execution** in the overview but **ACTIVE** in the detail reader. The unchanged reader at pilot head `a3f8559b` reproduces the same ACTIVE state, so this is not introduced by the professional presentation. Its legacy voting summary also substitutes a 60% threshold where the new reader correctly reports the absent configuration as unavailable.
+
+The status mismatch must be resolved in a separately owned read/parser change before mainnet rollout. The existing `getProposalDetail` status parser scans broad text before its explicit Status fallback; investigate that parsing contract against actual realm render output, without changing signing eligibility incidentally. This slice preserves the existing transaction behavior and does not claim the live proposal is actionable. No wallet was connected during comparison.
+
 ## Rendered screens
 
 These screenshots use labelled synthetic test data. They demonstrate layout and states, not live network activity or a recommendation to execute the illustrated action.
