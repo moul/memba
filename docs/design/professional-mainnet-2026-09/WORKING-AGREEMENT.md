@@ -1,6 +1,6 @@
 # Safe collaboration proposal
 
-**Status: proposed process.** The confirmed direction is in [DECISIONS.md](DECISIONS.md), and a conditional [implementation-plan proposal](IMPLEMENTATION-PLAN.md) now exists. No permission to implement is implied.
+**Status: adopted for the authorized pilot (2026-09-14).** The confirmed direction is in [DECISIONS.md](DECISIONS.md), and a conditional [implementation-plan proposal](IMPLEMENTATION-PLAN.md) now exists. The user has now authorized beginning P0–P5; production release remains a separate gate.
 
 The user asked to agree on art direction and UX changes first. Detailed PR sequencing, estimates and implementation ownership come after that discussion. The purpose of this document is to make the current audit safe and provide a concrete process to approve later.
 
@@ -67,4 +67,4 @@ Transaction-path changes require non-production fixtures and payload/permission 
 
 Record active tasks and their file ownership in the design-program tracking document selected during planning. Before each change, check branch/worktree status and the latest shared contracts. Rebase only the task's own branch. If a feature session changes an owned component or data contract, pause that overlapping edit, record the dependency, and adapt the design task to the new baseline. Keep non-overlapping work moving.
 
-The implementation-plan proposal now follows the confirmed direction, with detailed proof approval as its first gate. This agreement remains the collaboration framework; it does not authorize migration commits or feature activation.
+The implementation-plan proposal now follows the confirmed direction, with detailed proof approval as its first gate. This agreement remains the collaboration framework; implementation authorization is recorded in D-08 and does not include feature activation.

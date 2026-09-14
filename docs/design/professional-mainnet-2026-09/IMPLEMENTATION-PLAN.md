@@ -1,6 +1,6 @@
 # Implementation-plan proposal
 
-Status: **proposed, not authorized to execute**. This plan follows the confirmed decisions in DECISIONS.md. The first gate is approval of the detailed Validators proof and remaining responsive/state designs. The selected 01 / Folded M branding runs through separate asset refinement and does not block the pilot.
+Status: **P0–P5 pilot authorized to begin on 2026-09-14** by the user: “OK, what’s next? Can we start proceeding the plan?” This authorizes isolated implementation and a reviewable preview. It does not authorize automatic merge, production enablement, later feature waves or logo replacement. Responsive/state details and provisional table defaults will be reviewed in the rendered pilot. See [TASK-LEDGER.md](TASK-LEDGER.md).
 
 ## Outcome and constraints
 
@@ -75,4 +75,4 @@ Each handoff includes approved decision/proof versions, changed files, full vali
 
 Commit to P0–P5 as a bounded pilot only after plan review. Estimate each unit against the refreshed baseline and approved state frames; do not promise a completion date for the whole product redesign yet. The major sizing variables are existing feature changes, amount of table extraction required, coverage gaps in themes and mobile, and the final optional-column behavior. Branding can proceed without delaying the pilot.
 
-The next decision is approval or revision of the Validators proof and this proposed sequence. The current turn produces documents and images only.
+The next user review is the rendered pilot. Keep production presentation off until that review and the normal PR/release process are complete.
