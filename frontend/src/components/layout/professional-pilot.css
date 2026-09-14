@@ -65,7 +65,7 @@
 .k-pro-ui .val-health-banner__incident { padding-top: 12px; margin-top: 12px; border-color: var(--pro-border); }
 .k-pro-ui .val-toolbar { flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
 .k-pro-ui .val-toolbar-right { flex-wrap: wrap; gap: 16px; }
-.k-pro-ui :is(.val-search, .val-page-size, .val-sort-select) { min-height: 40px; border: 1px solid var(--pro-control-border); border-radius: 8px; background: var(--pro-canvas); color: var(--pro-text); font: 400 14px var(--font-sans); padding: 8px 12px; }
+.k-pro-ui :is(.val-search, .val-page-size) { min-height: 40px; border: 1px solid var(--pro-control-border); border-radius: 8px; background: var(--pro-canvas); color: var(--pro-text); font: 400 14px var(--font-sans); padding: 8px 12px; }
 .k-pro-ui .val-search { max-width: 380px; }
 .k-pro-ui .val-search::placeholder { color: var(--pro-secondary); opacity: 1; }
 .k-pro-ui .val-count { font: 400 13px var(--font-sans); }
@@ -117,7 +117,7 @@
     .k-pro-ui .val-toolbar { gap: 8px; }
     .k-pro-ui .val-toolbar-right { width: 100%; gap: 12px; justify-content: space-between; }
     .k-pro-ui .val-search { width: 100%; max-width: none; flex-basis: 100%; }
-    .k-pro-ui :is(.val-search, .val-sort-select) { height: 44px; min-height: 44px; }
+    .k-pro-ui :is(.val-search, .val-page-size) { height: 44px; min-height: 44px; font-size: 16px; }
     .k-pro-ui .val-card { padding: 16px; background: var(--pro-canvas); border-color: var(--pro-border); }
     .k-pro-ui .val-card__head { flex-wrap: wrap; gap: 8px; }
     .k-pro-ui .val-card__id { min-width: 120px; }

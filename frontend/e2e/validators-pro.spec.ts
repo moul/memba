@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import { fulfillProValidatorRoster } from './helpers/proValidatorsFixture'
+import { findHorizontalClipping } from './helpers/overflow'
 import { stubNetwork } from './helpers/stubNetwork'
 
 test.beforeEach(async ({ page }) => {
@@ -37,6 +38,9 @@ for (const width of [1280, 1440, 1920, 390, 320]) {
         }
         const clipping = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)
         expect(clipping).toBe(false)
+        // These two accessible labels intentionally use the existing 1px clip.
+        const clipped = (await findHorizontalClipping(page)).filter(row => !/^(CAPTION|SPAN)\.val-sr-only /.test(row))
+        expect(clipped).toEqual([])
         if (width >= 769) {
             const fits = await page.locator('.val-table-wrap').evaluate(el => el.scrollWidth <= el.clientWidth + 1)
             expect(fits).toBe(true)
@@ -45,6 +49,8 @@ for (const width of [1280, 1440, 1920, 390, 320]) {
             await expect(page.getByRole('columnheader', { name: 'Profile', exact: true })).toHaveCount(0)
         } else {
             await expect(page.getByTestId('validator-card-1')).toBeVisible()
+            await expect(page.locator('.val-search')).toHaveCSS('font-size', '16px')
+            await expect(page.getByRole('combobox', { name: 'Sort validators', exact: true })).toHaveCSS('font-size', '16px')
             const first = await page.getByTestId('validator-card-1').boundingBox()
             expect(first!.y).toBeLessThan(700)
             await expect(page.locator('.pro-val-overview')).not.toHaveAttribute('open')

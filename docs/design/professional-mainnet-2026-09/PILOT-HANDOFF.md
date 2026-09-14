@@ -2,7 +2,7 @@
 
 Scope: P0–P5 prototype review following the authorized direction A and System / Light / Black theme policy. Selected branding 01 / Folded M remains a separate workstream.
 
-Base: `98b8b762`, followed by theme foundation `ff71df72` (#1194). Branch `feat/validators-professional-pilot`, worktree `Memba-worktrees/validators-professional-pilot`. Shared `/Memba` checkout and other sessions' worktrees were not modified.
+Base: `98b8b762`, followed by theme foundation `caf0de76` (#1194). Branch `feat/validators-professional-pilot`, worktree `Memba-worktrees/validators-professional-pilot`. Shared `/Memba` checkout and other sessions' worktrees were not modified.
 
 ## Run and review
 
@@ -40,7 +40,7 @@ Rollback: keep `VITE_ENABLE_PRO_UI` absent/false; or revert this bounded present
 ## Local verification (2026-09-14)
 
 - `npm test -- --maxWorkers=4`: 504 files passed, 5,016 tests passed; one existing skipped test.
-- `npm run build`, `npm run lint`: passed. The final presentation refinements were followed by a fresh build/lint and browser matrix.
+- `npm run build`, `npm run lint`: passed. The final presentation refinements and inherited mobile-header correction were followed by a fresh build/lint and all 16 browser cases passing.
 - `npm run test:e2e:pro-ui`: 16 passed across Chromium, Firefox, iPhone/WebKit and Pixel. Checks cover 320/390/1280/1440/1920px, default desktop table fit, black surfaces, mobile disclosure, optional columns, search/reset, sorting and deep-link tabs. Axe scans of the changed main content pass in both Light and Black (healthy fixture state).
 - Background refresh failure retains the last roster; empty roster and first-load retry recovery have focused component coverage.
 - Theme foundation #1194: full backend build/race suite and protobuf lint passed on the same backend/proto tree. No backend/proto files changed in this pilot.
@@ -48,3 +48,5 @@ Rollback: keep `VITE_ENABLE_PRO_UI` absent/false; or revert this bounded present
 - Relative to P1, the Validators route CSS adds 1.72 kB gzip (4.35 → 6.07), route JS adds 0.66 kB gzip (9.40 → 10.06), and the main JS bundle adds 0.12 kB gzip (119.41 → 119.53). The main CSS bundle is unchanged. These are build-size observations, not load-time or rendering benchmarks.
 
 CI and release review remain separate from these local results. No merge is authorized by this handoff.
+
+The final mobile controls use 16px text to avoid iOS input zoom. The stricter clipping audit excludes only the two intentional screen-reader-only labels; it checks the rendered shell and content for hidden horizontal clipping.
