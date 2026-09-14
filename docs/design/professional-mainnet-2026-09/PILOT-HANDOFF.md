@@ -2,7 +2,7 @@
 
 Scope: P0–P5 prototype review following the authorized direction A and System / Light / Black theme policy. Selected branding 01 / Folded M remains a separate workstream.
 
-Base: `98b8b762`, followed by theme foundation `f67b9e51` (#1194). Branch `feat/validators-professional-pilot`, worktree `Memba-worktrees/validators-professional-pilot`. Shared `/Memba` checkout and other sessions' worktrees were not modified.
+Initial base: `98b8b762`. Refreshed to `d49896a1` through theme foundation `d3028e88` (#1194), preserving the landed validator page-size accessibility fix and protobuf update. The overlapping page-size label is included once. Branch `feat/validators-professional-pilot`, worktree `Memba-worktrees/validators-professional-pilot`. Shared `/Memba` checkout and other sessions' worktrees were not modified.
 
 ## Run and review
 
@@ -80,7 +80,7 @@ Layout widths, spacings and radii remain scoped pilot CSS rather than a publishe
 | Mobile overview | Native details/summary with Enter/Space; all metrics remain accessible inside. |
 | Reduced motion | Pilot animations/transitions disabled; status never depends on animation alone. |
 
-## Local verification (2026-09-14)
+## Local verification (2026-09-14, before the final mainline refresh)
 
 - `npm test -- --maxWorkers=4`: 504 files passed, 5,017 tests passed; one existing skipped test.
 - `npm run build`, `npm run lint`: passed. The final presentation refinements and inherited mobile-header correction were followed by a fresh build/lint and all 34 browser cases passing.
@@ -89,6 +89,8 @@ Layout widths, spacings and radii remain scoped pilot CSS rather than a publishe
 - Theme foundation #1194: full backend build/race suite and protobuf lint passed on the same backend/proto tree. No backend/proto files changed in this pilot.
 - Live mainnet read-only inspection at 1440px and 390px confirms real roster rendering and explicit missing-monitoring presentation. No wallet transaction or authentication flow was exercised.
 - Relative to P1, the Validators route CSS adds 1.78 kB gzip (4.35 → 6.13), route JS adds 0.93 kB gzip (9.40 → 10.33), and the main JS bundle adds 0.13 kB gzip (119.41 → 119.54). The main CSS bundle is unchanged. These are build-size observations, not load-time or rendering benchmarks.
+
+The results above describe the verified `ac89cb0e` presentation before the mainline refresh. Build, lint, unit and browser checks are being repeated on the refreshed tree; the final PR test plan and consolidated design REVIEW.md record those results. No backend/proto files changed in the refresh.
 
 The dedicated Professional preview workflow also runs on stacked PRs (the general CI workflow only targets main/dev/v2). It runs lint, the full unit suite, a default production build, and four-browser flag-on proof, with screenshots retained as CI artifacts. See the PR for the current remote result. No merge is authorized by this handoff.
 

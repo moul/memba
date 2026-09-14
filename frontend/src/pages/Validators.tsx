@@ -633,7 +633,6 @@ export default function Validators() {
                         />
                     ) : (
                         <select
-                            aria-label="Validators per page"
                             className="val-page-size"
                             aria-label="Validators per page"
                             value={pageSize}
