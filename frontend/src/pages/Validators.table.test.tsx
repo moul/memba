@@ -223,6 +223,17 @@ describe("Validators presentation preview — recoverable states", () => {
         expect(screen.queryByRole("heading", { name: "No matching validators" })).not.toBeInTheDocument()
     })
 
+    it("retains network context while the first roster is pending", async () => {
+        let resolveRoster!: (rows: ValidatorInfo[]) => void
+        vi.mocked(getValidators).mockReturnValueOnce(new Promise(resolve => { resolveRoster = resolve }))
+        renderWithProviders(<Validators />, { route: START })
+        expect(screen.getByRole("heading", { name: "Validators" })).toBeInTheDocument()
+        expect(screen.getByText("Loading validator data...")).toBeInTheDocument()
+        expect(screen.queryByTestId("validator-table")).not.toBeInTheDocument()
+        await act(async () => { resolveRoster([VALIDATOR]) })
+        expect(await screen.findByTestId("validator-row-1")).toBeInTheDocument()
+    })
+
     it("reports first-load failure and lets Retry recover", async () => {
         vi.mocked(getValidators).mockRejectedValueOnce(new Error("RPC unavailable"))
         renderWithProviders(<Validators />, { route: START })

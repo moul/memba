@@ -23,6 +23,7 @@ Full changelogs are split by version range for easier navigation:
 ### Professional Validators preview (2026-09-14)
 <!-- categories: memba -->
 - An opt-in presentation preview gives Validators a wider workspace, readable table, Light / true Black surfaces and expandable mobile network overview. Additional metrics remain available through All columns; existing queries, sorting and detail routes are preserved.
+- Health filtering includes Unknown explicitly; degraded/down explanations are visible beside the status, and failed initial reads offer a contextual retry. Dedicated preview CI covers the stacked branch.
 - The presentation flag is off by default and only applies to network-prefixed Validators overview routes. No contract or network capabilities are enabled.
 
 ### Follow device appearance or choose Light / Black (2026-09-14)

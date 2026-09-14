@@ -7,8 +7,8 @@ export default defineConfig({
     projects: [
         { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
         { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
-        { name: 'iphone', use: { ...devices['iPhone 13'] }, grep: /fits at (390|320)px/ },
-        { name: 'pixel', use: { ...devices['Pixel 5'] }, grep: /fits at (390|320)px/ },
+        { name: 'iphone', use: { ...devices['iPhone 13'] }, grep: /fits at (390|320)px|mobile health filter/ },
+        { name: 'pixel', use: { ...devices['Pixel 5'] }, grep: /fits at (390|320)px|mobile health filter/ },
     ],
     webServer: {
         command: 'npm run dev -- --host 127.0.0.1 --port 5189 --strictPort',

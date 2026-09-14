@@ -56,6 +56,7 @@ import {
     ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts"
 import {
+    ValidatorHealthStatus,
     computeHealthStatus,
     computeNetworkHealth,
     healthCssClass,
@@ -289,6 +290,7 @@ export default function Validators() {
     const [sortKey, setSortKey] = useState<SortKey>("rank")
     const [sortAsc, setSortAsc] = useState(true)
     const [search, setSearch] = useState("")
+    const [healthFilter, setHealthFilter] = useState<ValidatorHealthStatus | "all">("all")
     const [page, setPage] = useState(1)
     const [pageSize, setPageSize] = useState(50)
 
@@ -355,6 +357,7 @@ export default function Validators() {
     const { filtered, paginated, totalPages, currentPage, paginatedStart, paginatedEnd } = useMemo(() => {
         const f = validators
             .filter(v => {
+                if (proUi && healthFilter !== "all" && v.healthStatus !== healthFilter) return false
                 if (!search) return true
                 const q = search.toLowerCase()
                 return (
@@ -377,12 +380,12 @@ export default function Validators() {
         const p = f.slice(start, end)
 
         return { filtered: f, paginated: p, totalPages: tp, currentPage: cp, paginatedStart: start, paginatedEnd: end }
-    }, [validators, search, sortKey, sortAsc, page, effectivePageSize])
+    }, [validators, search, healthFilter, proUi, sortKey, sortAsc, page, effectivePageSize])
 
     // Reset to page 1 when search or page size changes — render-phase state
     // adjustment (the React-recommended pattern), not an effect.
-    const [prevPageInputs, setPrevPageInputs] = useState(`${search}|${pageSize}`)
-    const pageInputs = `${search}|${pageSize}`
+    const [prevPageInputs, setPrevPageInputs] = useState(`${search}|${pageSize}|${healthFilter}`)
+    const pageInputs = `${search}|${pageSize}|${healthFilter}`
     if (prevPageInputs !== pageInputs) {
         setPrevPageInputs(pageInputs)
         setPage(1)
@@ -413,6 +416,22 @@ export default function Validators() {
         const chartData = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-30)
         return chartData.length > 0 ? chartData : null
     }, [validators])
+
+    if (proUi && (loading || error)) {
+        return (
+            <div className="val-page" data-testid="validators-page">
+                <div className="val-header"><h1>Validators</h1><span className="val-chain-badge">{GNO_CHAIN_ID}</span></div>
+                {loading ? <ConnectingLoader message="Loading validator data..." minHeight="40vh" /> : (
+                    <div className="pro-val-empty" role="alert">
+                        <h2>Unable to load validators</h2>
+                        <p>The selected network could not return validator data. Try again.</p>
+                        <details><summary>Technical details</summary><p>{error}</p></details>
+                        <button type="button" onClick={() => void rosterQuery.refetch()}>Retry</button>
+                    </div>
+                )}
+            </div>
+        )
+    }
 
     if (loading) {
         return <ConnectingLoader message="Loading validator data..." minHeight="40vh" />
@@ -578,6 +597,16 @@ export default function Validators() {
                     className="val-search"
                     data-testid="validator-search"
                 />
+                {proUi && (
+                    <select aria-label="Filter by health" className="val-page-size pro-val-health-filter"
+                        value={healthFilter} onChange={event => setHealthFilter(event.target.value as ValidatorHealthStatus | "all")}>
+                        <option value="all">All health states</option>
+                        <option value="healthy">Healthy</option>
+                        <option value="degraded">Degraded</option>
+                        <option value="down">Down</option>
+                        <option value="unknown">Unknown</option>
+                    </select>
+                )}
                 <div className="val-toolbar-right">
                     {proUi && !isMobile && (
                         <label className="pro-val-columns">
@@ -615,7 +644,7 @@ export default function Validators() {
                             <option value={100}>100 / page</option>
                         </select>
                     )}
-                    <span className="val-count">
+                    <span className="val-count" role={proUi ? "status" : undefined}>
                         {filtered.length} validator{filtered.length !== 1 ? "s" : ""}
                     </span>
                 </div>
@@ -624,8 +653,8 @@ export default function Validators() {
             {proUi && filtered.length === 0 && (
                 <div className="pro-val-empty" role="status">
                     <h2>{validators.length === 0 ? "No validators returned" : "No matching validators"}</h2>
-                    <p>{validators.length === 0 ? "The selected network returned an empty consensus set." : "Try a validator name or address, or clear your search."}</p>
-                    {search && <button type="button" onClick={() => setSearch("")}>Clear search</button>}
+                    <p>{validators.length === 0 ? "The selected network returned an empty consensus set." : "Try another name, address or health state, or clear your filters."}</p>
+                    {(search || healthFilter !== "all") && <button type="button" onClick={() => { setSearch(""); setHealthFilter("all") }}>Clear filters</button>}
                 </div>
             )}
 
@@ -780,6 +809,9 @@ export default function Validators() {
                                         <span className="val-health-badge__icon">{healthIcon(v.healthStatus)}</span>
                                         <span className="val-health-badge__label">{healthLabel(v.healthStatus)}</span>
                                     </span>
+                                    {proUi && v.healthStatus !== ValidatorHealthStatus.Healthy && v.healthMeta?.reason && (
+                                        <span className="pro-val-health-reason">{v.healthMeta.reason}</span>
+                                    )}
                                 </td>
                                 <td className="val-td val-td-center">
                                     {v.lastBlockSignatures.length > 0 ? (

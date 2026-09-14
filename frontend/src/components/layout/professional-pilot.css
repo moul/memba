@@ -136,3 +136,9 @@
 /* Detailed columns may scroll horizontally; the validator identity stays in view. */
 .k-pro-ui :is(.val-addr, .val-identity) { position: sticky; left: 0; z-index: 1; background: var(--pro-canvas); }
 .k-pro-ui .val-row:hover .val-addr { background: var(--pro-hover); }
+
+/* Keep operational explanations visible without forcing a tooltip interaction. */
+.k-pro-ui .pro-val-health-reason { display: block; max-width: 200px; margin: 8px auto 0; font: 400 12px/1.5 var(--font-sans); color: var(--pro-secondary); white-space: normal; overflow-wrap: anywhere; }
+.k-pro-ui .pro-val-empty details { margin-bottom: 16px; overflow-wrap: anywhere; }
+.k-pro-ui .pro-val-empty summary { cursor: pointer; padding: 8px 0; }
+.k-pro-ui .pro-val-health-filter { flex-shrink: 0; }
