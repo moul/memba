@@ -22,7 +22,7 @@ Full changelogs are split by version range for easier navigation:
 
 ### Follow device appearance or choose Light / Black (2026-09-14)
 <!-- categories: memba -->
-- Theme controls now offer System, Light and Black in the top bar, mobile menu and Settings. System follows device appearance changes; explicit choices stay fixed and synchronize across tabs. Existing saved Light/Black choices remain compatible.
+- Theme controls now offer System, Light and Black in the desktop top bar, mobile More menu and Settings. System follows device appearance changes; explicit choices stay fixed and synchronize across tabs. Existing saved Light/Black choices remain compatible.
 
 ### Mobile validator selectors keep their touch target on iPhone (2026-09-14)
 <!-- categories: memba -->
