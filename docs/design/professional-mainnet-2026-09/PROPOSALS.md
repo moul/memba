@@ -1,6 +1,6 @@
 # Art direction and UX proposals
 
-**Discussion draft. No art direction or behavior change is approved.**
+**Historical round-1 proposal.** Direction A, the broad audience, system-default true-black theme, navigation simplification in principle, separate branding exploration and Validators-first proof are now confirmed in [DECISIONS.md](DECISIONS.md). The charcoal/slate B recommendation below is superseded. See [VALIDATORS-PROOF.md](VALIDATORS-PROOF.md) for the current proposal. Detailed behavior and implementation remain unapproved.
 
 ## Three directions
 

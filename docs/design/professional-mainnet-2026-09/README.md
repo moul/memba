@@ -1,12 +1,23 @@
 # Memba: professional mainnet design study
 
-**14 September 2026 · Audit and proposals · Awaiting discussion**
+**14 September 2026 · Round 2 · Direction confirmed; detailed proof and implementation plan proposed**
 
 Memba has substantial functionality, but its presentation still asks users to interpret a developer-oriented ecosystem dashboard. The strongest opportunity is to make everyday governance and treasury work immediately understandable, while preserving technical depth and truthful network status.
 
-**Recommendation for discussion:** A, Quiet Confidence, as the primary visual direction; develop an equally deliberate dark theme informed by B. Keep Memba's teal identity and a restrained, distinct treatment for network governance. Audience priority, theme default, navigation, and branding remain unapproved.
+**Confirmed direction:** A, Quiet Confidence, for DAO/treasury teams, mainstream communities and entrepreneurs/companies building on gno.land. Follow the system theme by default, with true `#000000` Black instead of B's charcoal/slate palette. Simplified navigation is accepted in principle. Validators is the first design proof; branding is explored separately.
 
-## Read this study
+## Current round
+
+1. [Confirmed decisions and remaining choices](DECISIONS.md)
+2. [Validators: Light and true Black proof](VALIDATORS-PROOF.md)
+3. [Separate M branding exploration](BRANDING.md)
+4. [Implementation-plan proposal](IMPLEMENTATION-PLAN.md)
+
+![Validators light and black proof](assets/validators-light-black-v1.png)
+
+![M branding on black](assets/branding-black-v1.png)
+
+## Initial audit and historical proposals
 
 1. [Audit: findings and coverage of every feature family](AUDIT.md)
 2. [Three art directions and concrete UX proposals](PROPOSALS.md)
@@ -27,12 +38,10 @@ The study combines three user screenshots, a source-based heuristic review at `e
 
 The shared `/Memba` checkout was on `main` at `4a7081ec`, clean and two commits behind its local `origin/main` reference. The isolated worktree was created from that reference at `e20d261b` on `docs/professional-design-audit`. This records the exact audit snapshot rather than claiming it was the latest deployed version.
 
-## Decisions to discuss
+## Decisions for the next review
 
-- Which audience leads: DAO/treasury teams, mainstream communities, or operators?
-- A, B, C, or a specific combination? Light-first, dark-first, or system default?
-- Can we simplify the top-level navigation and move discovery/community features into a clearly accessible Explore area?
-- Preserve the current emblem, refine it, or explore branding separately?
-- Is the validators table or the DAO proposal experience the best first design proof?
+- Approve or refine the Validators layout, default/optional columns and responsive/state behavior.
+- Review the proposed implementation sequence; no code work has started.
+- Choose a branding concept to refine independently, if desired.
 
-After these decisions, prepare an implementation-plan proposal with dependency order, bounded PRs, ownership, acceptance criteria, compatibility checks, and rollback. This study deliberately does not begin that implementation.
+The original A/B/C and governance boards remain below as historical exploration. Their charcoal/blue dark palette and unresolved audience questions are superseded by DECISIONS.md. The detailed navigation labels, final logo and implementation/release remain unapproved.
