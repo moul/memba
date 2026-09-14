@@ -16,5 +16,8 @@
     outline-offset: 3px;
 }
 @media (max-width: 768px) {
-    .k-theme-select { min-height: 44px; }
+    .k-theme-select { min-height: 44px; font-size: 16px; }
+    /* Mobile already exposes the same picker in More and Settings. Reserve
+       the narrow top bar for the network and wallet controls. */
+    .k-topbar .k-theme-select { display: none; }
 }
