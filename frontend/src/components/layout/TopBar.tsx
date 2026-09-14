@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { CopyableAddress } from "../ui/CopyableAddress"
 import { validateActiveRpcDomain, selectableNetworksFor } from "../../lib/config"
 import { NotificationBell } from "./NotificationBell"
