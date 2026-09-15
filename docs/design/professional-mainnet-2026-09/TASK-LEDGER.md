@@ -1,6 +1,6 @@
 # Professional design task ledger
 
-Updated 2026-09-14. Autonomous pilot completion authorized; final review is consolidated in REVIEW.md. Owner: current design implementation session. Memba only. No background agents, automations, merges or deployments.
+Updated 2026-09-15. Autonomous pilot completion authorized; final review is consolidated in REVIEW.md. Owner: current design implementation session. Memba only. No background agents, automations, merges or deployments.
 
 ## Baseline and isolation
 
@@ -67,4 +67,27 @@ Final implementation head: `62566f17`. [Professional preview run 34896625904](ht
 
 Final review head **3c752565** passed [Professional preview run 34901052752](https://github.com/samouraiworld/memba/actions/runs/34901052752) in 14m9s: **5,044 unit tests passed, 15 skipped** (510 passing test files, one skipped), lint and default production build, **36 Validators**, **37 shell/brand** and **42 governance** browser checks — **115 browser checks total**. Changelog and both attribution checks passed. The provider marked its deploy preview canceled/skipped; this is not a production deployment or an enabled hosted design preview.
 
-The shared checkout was last inspected clean on `main` at `3120124f`; other activity advanced its dependency updates during this session. The design work did not alter that checkout. The stacked feature branches still require integration with current main before release. The mainnet status parser blocker remains unresolved and is intentionally outside the presentation PR.
+The shared checkout was last inspected clean on `main` at `3120124f`; other activity advanced its dependency updates during this session. The design work did not alter that checkout. The stacked feature branches still require integration with current main before release. At this checkpoint the mainnet status parser blocker remained unresolved and outside the presentation PR; the subsequent separate fix is recorded below.
+
+## Separate mainnet read-correctness fix — 2026-09-15
+
+- [Draft PR #1199](https://github.com/samouraiworld/memba/pull/1199), branch
+  `fix/govdao-proposal-status`, own worktree of the same name, base **3120124f**
+  from main; final implementation head **f2363775**.
+- Reads generated status fields instead of arbitrary prose and treats
+  canonical/versioned GovDAO ACCEPTED as already executed in list and detail.
+  Basedao/daokit, other realms, JSON and transaction builders remain unchanged.
+- Deployed read evidence and limitations: [status blocker report](MAINNET-STATUS-BLOCKER.md).
+- Local: **415 targeted tests / 20 files**, build, lint, attribution and diff
+  checks passed. Fresh mainnet RPC at block 52365; live browser shows EXECUTED.
+  All transaction tests use mocked broadcasts. No wallet was connected.
+- Final-head [CI run 34926842222](https://github.com/samouraiworld/memba/actions/runs/34926842222) passed on that exact head: **5,029 unit tests passed, 15 skipped** (Node 22); both Node 20/22 jobs green. **229 Chromium checks passed, 7 skipped; 58 browser guardrails passed**. Backend, Buf, workspace checks, Docker, security, Lighthouse, changelog and attribution also passed.
+- Review preview: `http://127.0.0.1:5197/mainnet/dao/gno.land/r/gov/dao/proposal/4`.
+  This is the separate main-based correction, not the professional theme.
+- No merges, production deployments or design flag activation. Existing
+  5188/5191/5194 preview branches are unchanged. Merge/integration ordering
+  should land the read fix before enabling the professional governance reader.
+
+Next design wave remains Home / DAO discovery. Integration with current main
+and the status fix must precede a combined mainnet release review; continuing
+review-only design work does not authorize unfinished contract capabilities.
