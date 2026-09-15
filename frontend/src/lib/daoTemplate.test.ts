@@ -168,48 +168,28 @@ describe('code injection prevention', () => {
 
     it('member addresses appear in init() block', () => {
         const code = generateDAOCode(makeConfig({
-            members: [{ address: 'g1abcdefghij1234567890abcdefghijklmnopqr', power: 1, roles: ['member'] }],
+            members: [{ address: 'g1abcdefghij1234567890abcdefghijklmnopqr', power: 1, roles: ['admin'] }],
         }))
         expect(code).toContain('g1abcdefghij1234567890abcdefghijklmnopqr')
     })
 
-    it('REJECTS invalid member addresses (prevents injection)', () => {
-        const code = generateDAOCode(makeConfig({
+    it('rejects the whole configuration when a member address is invalid', () => {
+        expect(() => generateDAOCode(makeConfig({
             members: [
                 { address: 'g1abcdefghij1234567890abcdefghijklmnopqr', power: 1, roles: ['admin'] },
                 { address: 'INVALID"; panic("hacked', power: 1, roles: ['admin'] },
             ],
-        }))
-        // Valid address should be present
-        expect(code).toContain('g1abcdefghij1234567890abcdefghijklmnopqr')
-        // Invalid address should NOT appear in generated code
-        expect(code).not.toContain('INVALID')
-        expect(code).not.toContain('hacked')
+        }))).toThrow(/address/i)
     })
 
-    it('filters invalid roles (prevents injection via role names)', () => {
-        const code = generateDAOCode(makeConfig({
-            roles: ['admin', 'member', 'INVALID-ROLE', '"inject"'],
-        }))
-        expect(code).toContain('"admin"')
-        expect(code).toContain('"member"')
-        expect(code).not.toContain('INVALID-ROLE')
-        expect(code).not.toContain('inject')
+    it('rejects invalid roles without silently changing the configuration', () => {
+        expect(() => generateDAOCode(makeConfig({ roles: ['admin', 'member', 'INVALID-ROLE', '"inject"'] }))).toThrow(/role/i)
     })
 
-    it('filters invalid categories', () => {
-        const code = generateDAOCode(makeConfig({
-            proposalCategories: ['governance', 'drop_tables', 'treasury'],
-        }))
-        expect(code).toContain('"governance"')
-        expect(code).toContain('"treasury"')
-        // 'drop_tables' is a valid identifier so it passes through — but injection strings don't
-        const code2 = generateDAOCode(makeConfig({
-            proposalCategories: ['governance', '"; INJECT("', 'treasury'],
-        }))
-        expect(code2).toContain('"governance"')
-        expect(code2).toContain('"treasury"')
-        expect(code2).not.toContain('INJECT')
+    it('preserves valid categories and rejects invalid ones', () => {
+        const code = generateDAOCode(makeConfig({ proposalCategories: ['governance', 'drop_tables', 'treasury'] }))
+        expect(code).toContain('"drop_tables"')
+        expect(() => generateDAOCode(makeConfig({ proposalCategories: ['governance', '"; INJECT("', 'treasury'] }))).toThrow(/categor/i)
     })
 
     // W1.1: silent clamp/floor of member power replaced by fail-closed throws —

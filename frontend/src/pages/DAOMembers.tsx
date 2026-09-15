@@ -57,10 +57,12 @@ export function DAOMembers() {
 
     const currentUserMember = members.find((m) => m.address === adena.address)
     const isAdmin = currentUserMember?.roles.includes("admin") ?? false
+    const canManageRoles = isAdmin && auth.isAuthenticated && !!config && !config.isArchived
     const availableRoles = ["admin", "dev", "finance", "ops", "member"]
 
     const handleAssignRole = async (target: string, role: string) => {
         if (!adena.address || !auth.isAuthenticated) { setActionError("Connect your wallet first"); return }
+        if (!canManageRoles) { setActionError("Role management is unavailable for this DAO"); return }
         setActionLoading(true); setActionError(null); setActionSuccess(null)
         try {
             const msg = buildAssignRoleMsg(adena.address, realmPath, target, role)
@@ -74,6 +76,7 @@ export function DAOMembers() {
 
     const handleRemoveRole = async (target: string, role: string) => {
         if (!adena.address || !auth.isAuthenticated) { setActionError("Connect your wallet first"); return }
+        if (!canManageRoles) { setActionError("Role management is unavailable for this DAO"); return }
         setActionLoading(true); setActionError(null); setActionSuccess(null)
         try {
             const msg = buildRemoveRoleMsg(adena.address, realmPath, target, role)
@@ -121,6 +124,10 @@ export function DAOMembers() {
                 </div>
             )}
 
+            {config?.isArchived && (
+                <p role="status">This DAO is archived — role changes are disabled.</p>
+            )}
+
             {/* Tier Filters */}
             {tiers.length > 0 && (
                 <div className="k-members__filters">
@@ -160,7 +167,7 @@ export function DAOMembers() {
                 {filteredMembers.map((m) => (
                     <MemberRow
                         key={m.address} member={m} isCurrentUser={m.address === adena.address}
-                        isAdmin={isAdmin} availableRoles={availableRoles}
+                        isAdmin={canManageRoles} availableRoles={availableRoles}
                         onAssignRole={handleAssignRole} onRemoveRole={handleRemoveRole} actionLoading={actionLoading}
                     />
                 ))}

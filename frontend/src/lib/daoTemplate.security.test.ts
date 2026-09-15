@@ -52,19 +52,12 @@ describe("address injection prevention", () => {
         expect(isValidGnoAddress("g1\u0430" + "a".repeat(37))).toBe(false)
     })
 
-    it("only valid members appear in generated code", () => {
-        const validAddr = "g1" + "a".repeat(38)
-        const code = generateDAOCode(makeConfig({
-            members: [
-                { address: validAddr, power: 1, roles: ["admin"] },
-                { address: "INJECTED_CODE", power: 1, roles: ["admin"] },
-                { address: "", power: 1, roles: ["admin"] },
-            ],
-        }))
-        expect(code).toContain(validAddr)
-        expect(code).not.toContain("INJECTED_CODE")
-        // Only one address() call — the valid one
-        expect(code.match(/address\("g1/g)?.length).toBe(1)
+    it("refuses the entire roster rather than dropping invalid members", () => {
+        expect(() => generateDAOCode(makeConfig({ members: [
+            { address: "g1" + "a".repeat(38), power: 1, roles: ["admin"] },
+            { address: "INJECTED_CODE", power: 1, roles: ["admin"] },
+            { address: "", power: 1, roles: ["admin"] },
+        ] }))).toThrow(/address/i)
     })
 })
 
@@ -72,24 +65,11 @@ describe("address injection prevention", () => {
 
 describe("role injection prevention", () => {
     it("rejects roles starting with non-lowercase", () => {
-        const code = generateDAOCode(makeConfig({
-            roles: ["admin", "Admin", "ADMIN", "123role"],
-        }))
-        expect(code).toContain('"admin"')
-        // isValidIdentifier requires ^[a-z] start
-        expect(code).not.toContain('"Admin"')
-        expect(code).not.toContain('"ADMIN"')
-        expect(code).not.toContain('"123role"')
+        expect(() => generateDAOCode(makeConfig({ roles: ["admin", "Admin", "ADMIN", "123role"] }))).toThrow(/role/i)
     })
 
     it("rejects roles with spaces or special chars", () => {
-        const code = generateDAOCode(makeConfig({
-            roles: ["admin", "super admin", "my-role", "role.name"],
-        }))
-        expect(code).toContain('"admin"')
-        expect(code).not.toContain("super admin")
-        expect(code).not.toContain("my-role")
-        expect(code).not.toContain("role.name")
+        expect(() => generateDAOCode(makeConfig({ roles: ["admin", "super admin", "my-role", "role.name"] }))).toThrow(/role/i)
     })
 
     it("allows valid underscore identifiers", () => {
@@ -101,12 +81,7 @@ describe("role injection prevention", () => {
     })
 
     it("rejects categories with injection attempts", () => {
-        const code = generateDAOCode(makeConfig({
-            proposalCategories: ["governance", '"; INJECT("x', "treasury"],
-        }))
-        expect(code).toContain('"governance"')
-        expect(code).toContain('"treasury"')
-        expect(code).not.toContain("INJECT")
+        expect(() => generateDAOCode(makeConfig({ proposalCategories: ["governance", '"; INJECT("x', "treasury"] }))).toThrow(/categor/i)
     })
 })
 

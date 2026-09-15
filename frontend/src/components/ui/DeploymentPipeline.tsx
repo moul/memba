@@ -29,6 +29,8 @@ export interface DeploymentResult {
     entityLabel?: string
     /** User-facing entity name. */
     entityName?: string
+    /** Confirmed primary deployment with incomplete optional setup. */
+    warnings?: string[]
 }
 
 export interface DeploymentPipelineProps {
@@ -138,7 +140,7 @@ export function DeploymentPipeline({
                 {/* Header */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                     <h3 style={{ fontSize: "var(--pro-body, 15px)", fontWeight: 600, color: "var(--color-text)", margin: 0 }}>
-                        {isComplete ? "🎉 Deployment Complete" : isError ? "⚠️ Deployment Failed" : "🚀 Deploying..."}
+                        {isComplete ? (result?.warnings?.length ? `${result.entityLabel || "Entity"} created — setup needs attention` : "🎉 Deployment Complete") : isError ? "⚠️ Deployment Failed" : "🚀 Deploying..."}
                     </h3>
                     {canDismiss && onClose && (
                         <button
@@ -197,6 +199,11 @@ export function DeploymentPipeline({
                         <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--color-primary)", marginBottom: 6 }}>
                             {result.entityLabel || "Entity"} deployed successfully!
                         </h2>
+                        {result.warnings?.map((warning, index) => (
+                            <p key={index} role="alert" style={{ color: "var(--color-k-warning)", marginBottom: 12 }}>
+                                {warning}
+                            </p>
+                        ))}
                         {result.entityName && (
                             <p style={{ fontSize: "var(--pro-small, 13px)", color: "var(--color-text-secondary)", marginBottom: 12, fontFamily: "var(--font-ui, JetBrains Mono, monospace)" }}>
                                 {result.entityName}

@@ -38,6 +38,9 @@ vi.mock("../../../lib/dao/shared", () => ({
 }))
 
 const shared = await import("../../../lib/dao/shared")
+// Load the component once outside individual assertion deadlines. On a busy
+// workstation its cold dependency transform can exceed a test's 15s budget.
+const { DAOsTab } = await import("./DAOsTab")
 
 // ── Wrapper ───────────────────────────────────────────────────
 
@@ -60,14 +63,12 @@ describe("DAOsTab — resolve filter (R2-D2)", () => {
     })
 
     it("renders a DAO that resolves on the active network", async () => {
-        const { DAOsTab } = await import("./DAOsTab")
         render(<DAOsTab navigate={vi.fn()} />, { wrapper: makeWrapper() })
 
         await waitFor(() => expect(screen.getByText("GovDAO")).toBeInTheDocument())
     })
 
     it("never renders a stale DAO that 404s on the active network", async () => {
-        const { DAOsTab } = await import("./DAOsTab")
         render(<DAOsTab navigate={vi.fn()} />, { wrapper: makeWrapper() })
 
         // Wait until the real DAO is on screen (resolution settled)…
@@ -91,7 +92,6 @@ describe("DAOsTab — transport outage keeps unverified DAOs visible (B-9)", () 
     })
 
     it("renders the unreachable DAO as a degraded card, not a silent drop", async () => {
-        const { DAOsTab } = await import("./DAOsTab")
         render(<DAOsTab navigate={vi.fn()} />, { wrapper: makeWrapper() })
 
         // The unreachable saved DAO is still on the board…
@@ -107,7 +107,6 @@ describe("DAOsTab — transport outage keeps unverified DAOs visible (B-9)", () 
         // The literal B-9 regression scenario: EVERY render read fails.
         vi.mocked(shared.queryRender).mockRejectedValue(new Error("All RPC endpoints unreachable"))
 
-        const { DAOsTab } = await import("./DAOsTab")
         render(<DAOsTab navigate={vi.fn()} />, { wrapper: makeWrapper() })
 
         await waitFor(() => expect(screen.getAllByTestId("dao-degraded")).toHaveLength(2))

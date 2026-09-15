@@ -42,6 +42,11 @@ const mkMember = (over: Partial<DAOMember> = {}): DAOMember => ({
 // ── normalizeStatus ─────────────────────────────────────────────
 
 describe('normalizeStatus', () => {
+    it('keeps expired proposals closed to voting', () => {
+        expect(_normalizeStatus('EXPIRED')).toBe('expired')
+        expect(_normalizeStatus('expired')).toBe('expired')
+    })
+
     it('maps "ACCEPTED" → "passed"', () => {
         expect(_normalizeStatus('ACCEPTED')).toBe('passed')
     })

@@ -15,7 +15,6 @@
 import type { AminoMsg } from "./grc20"
 import { isValidGnoAddress, isValidIdentifier, validateRealmPath, requireInt, requireRealmPath } from "./templates/sanitizer"
 import { buildDeployMsg } from "./templates/prologue"
-import { BECH32_PREFIX } from "./config"
 export { validateRealmPath }
 
 // ── Wizard step validation (pure, testable) ───────────────────
@@ -30,6 +29,36 @@ export interface DAOStepData {
     quorum: number
 }
 
+// Gno package declarations use identifier tokens, not arbitrary path segments.
+const RESERVED_PACKAGE_NAMES = new Set("break default func interface select case defer go map struct chan else goto package switch const fallthrough if range type continue for import return var".split(" "))
+function daoPackageError(path: string): string | null {
+    const name = path.split("/").pop() ?? ""
+    if (!/^[a-z_][a-z0-9_]*$/.test(name) || RESERVED_PACKAGE_NAMES.has(name)) {
+        return "Realm name must be a valid, non-reserved Gno package identifier"
+    }
+    return null
+}
+
+function daoMemberError(members: DAOStepData["members"]): string | null {
+    if (members.length === 0) return "At least one member with a valid g1 address is required"
+    if (members.some(m => !isValidGnoAddress(m.address))) return "Every member must have a valid g1 address (40 characters)"
+    if (new Set(members.map(m => m.address)).size !== members.length) return "Duplicate member addresses are not allowed"
+    if (!members.some(m => m.roles.includes("admin"))) return "At least one member must have the admin role"
+    if (members.some(m => m.power !== undefined && (!Number.isSafeInteger(m.power) || m.power < 0 || m.power > 1_000_000_000))) {
+        return "Member voting power must be a whole number between 0 and 1,000,000,000"
+    }
+    const total = members.reduce((sum, m) => sum + (m.power ?? 1), 0)
+    if (!Number.isSafeInteger(total) || total <= 0) return "Total member voting power must be positive and within the safe integer range"
+    return null
+}
+
+function requireIdentifiers(label: string, values: string[]): void {
+    if (values.length === 0 || values.some(value => !isValidIdentifier(value))) {
+        throw new Error(`Invalid ${label}: provide at least one valid identifier`)
+    }
+    if (new Set(values).size !== values.length) throw new Error(`Duplicate ${label} are not allowed`)
+}
+
 /**
  * Validate a single CreateDAO wizard step's data. Returns an error string for
  * the first problem found, or null if the step is valid. Pure (no component
@@ -39,22 +68,17 @@ export interface DAOStepData {
 export function daoStepError(step: number, d: DAOStepData): string | null {
     if (step === 1) {
         if (!d.name.trim()) return "DAO name is required"
-        if (d.name.length < 3) return "DAO name must be at least 3 characters"
+        if (d.name.trim().length < 3) return "DAO name must be at least 3 characters"
         if (!d.realmPath.trim()) return "Realm path is required"
         const pathErr = validateRealmPath(d.realmPath)
         if (pathErr) return pathErr
+        const packageErr = daoPackageError(d.realmPath)
+        if (packageErr) return packageErr
     }
     if (step === 2) {
-        const valid = d.members.filter((m) => m.address.startsWith(BECH32_PREFIX) && m.address.length >= 39)
-        if (valid.length === 0) return "At least one member with a valid g1 address is required"
-        const invalid = d.members.filter((m) => m.address.length > 0 && (!m.address.startsWith(BECH32_PREFIX) || m.address.length < 39))
-        if (invalid.length > 0) return `${invalid.length} address(es) look invalid — must start with g1 and be 39+ characters`
-        const hasAdmin = d.members.some((m) => m.address.startsWith(BECH32_PREFIX) && m.roles.includes("admin"))
-        if (!hasAdmin) return "At least one member must have the admin role"
-        // W1.1: codegen throws on out-of-range power — catch it here first so
-        // an honest typo gets the gentle inline notice, not an exception.
-        const badPower = d.members.find((m) => m.power !== undefined && (!Number.isInteger(m.power) || m.power < 0 || m.power > 1_000_000_000))
-        if (badPower) return "Member voting power must be a whole number between 0 and 1,000,000,000"
+        // An untouched extra row is not a member. Nonempty invalid rows must
+        // never disappear between the wizard review and generated deployment.
+        return daoMemberError(d.members.filter(m => m.address !== ""))
     }
     if (step === 3) {
         // NaN (e.g. an emptied number input) fails BOTH range comparisons —
@@ -193,21 +217,26 @@ export function generateDAOCode(config: DAOCreationConfig): string {
 
     const pkgName = config.realmPath.split("/").pop() || "mydao"
 
-    // Validate and sanitize all member inputs
-    const validMembers = config.members.filter((m) => {
-        if (!isValidGnoAddress(m.address)) {
-            console.warn(`[daoTemplate] Skipping invalid address: ${m.address}`)
-            return false
-        }
-        return true
-    })
-
-    const safeCategories = config.proposalCategories.filter(isValidIdentifier)
+    const packageError = daoPackageError(config.realmPath)
+    if (packageError) throw new Error(packageError)
+    const memberError = daoMemberError(config.members)
+    if (memberError) throw new Error(memberError)
+    requireIdentifiers("roles", config.roles)
+    requireIdentifiers("proposal categories", config.proposalCategories)
+    if (!config.roles.includes("admin")) throw new Error("Available roles must include admin")
+    for (const member of config.members) {
+        if (member.roles.some(role => !config.roles.includes(role))) throw new Error("Member roles must be declared in available roles")
+        if (new Set(member.roles).size !== member.roles.length) throw new Error("Duplicate member roles are not allowed")
+    }
+    // Preserve the reviewed configuration exactly. Filtering here could change
+    // the founding roster, voting denominator or role configuration silently.
+    const validMembers = config.members
+    const safeCategories = config.proposalCategories
     const categoriesInit = safeCategories
         .map((c) => `\tallowedCategories = append(allowedCategories, "${c}")`)
         .join("\n")
 
-    const safeRoles = config.roles.filter(isValidIdentifier)
+    const safeRoles = config.roles
     const rolesInit = safeRoles
         .map((r) => `\tallowedRoles = append(allowedRoles, "${r}")`)
         .join("\n")
@@ -216,7 +245,7 @@ export function generateDAOCode(config: DAOCreationConfig): string {
     // This gives O(log n) lookups instead of O(n), preventing gas DoS at scale.
     const memberInitAVL = validMembers
         .map((m) => {
-            const safeRoles = m.roles.filter(isValidIdentifier)
+            const safeRoles = m.roles
             const rolesStr = safeRoles.map((r) => `"${r}"`).join(", ")
             return `\tmembers.Set("${m.address}", &Member{Address: address("${m.address}"), Power: ${requireInt("member power", m.power, 0, 1_000_000_000)}, Roles: []string{${rolesStr}}})`
         })
@@ -339,6 +368,15 @@ func jsonEsc(s string) string {
 \treturn out + "\\""
 }
 
+// Expiry is derived on reads: a failed late vote rolls its state changes
+// back. Accepted proposals keep their existing execution lifecycle.
+func proposalStatus(p *Proposal) string {
+\tif p.Status == "ACTIVE" && p.ExpiresAt > 0 && runtime.ChainHeight() > p.ExpiresAt {
+\t\treturn "EXPIRED"
+\t}
+\treturn p.Status
+}
+
 // GetProposalsJSON returns every proposal as a JSON array (newest first), the
 // snake_case shape dao/proposals.ts already reads. Frontend prefers this over
 // Render() scraping; keep the keys in sync with that parser.
@@ -355,7 +393,7 @@ func GetProposalsJSON() string {
 \t\tout += ",\\"title\\":" + jsonEsc(p.Title)
 \t\tout += ",\\"description\\":" + jsonEsc(p.Description)
 \t\tout += ",\\"category\\":" + jsonEsc(p.Category)
-\t\tout += ",\\"status\\":" + jsonEsc(p.Status)
+\t\tout += ",\\"status\\":" + jsonEsc(proposalStatus(p))
 \t\tout += ",\\"author\\":" + jsonEsc(string(p.Author))
 \t\tout += ",\\"yes_votes\\":" + strconv.Itoa(p.YesVotes)
 \t\tout += ",\\"no_votes\\":" + strconv.Itoa(p.NoVotes)
@@ -452,7 +490,7 @@ func renderHome(page int) string {
 \t\tout += "### [Prop #" + strconv.Itoa(p.ID) + " - " + p.Title + "](:" + strconv.Itoa(p.ID) + ")\\n"
 \t\tout += "Author: " + string(p.Author) + "\\n\\n"
 \t\tout += "Category: " + p.Category + "\\n\\n"
-\t\tout += "Status: " + p.Status + "\\n\\n---\\n\\n"
+\t\tout += "Status: " + proposalStatus(p) + "\\n\\n---\\n\\n"
 \t\tshown++
 \t\treturn false
 \t})
@@ -478,7 +516,7 @@ func renderProposal(p *Proposal) string {
 \tout += p.Description + "\\n\\n"
 \tout += "Author: " + string(p.Author) + "\\n\\n"
 \tout += "Category: " + p.Category + "\\n\\n"
-\tout += "Status: " + p.Status + "\\n\\n"
+\tout += "Status: " + proposalStatus(p) + "\\n\\n"
 \tout += "YES: " + strconv.Itoa(p.YesVotes) + " | NO: " + strconv.Itoa(p.NoVotes) + " | ABSTAIN: " + strconv.Itoa(p.Abstain) + "\\n"
 \tout += "Total Power: " + strconv.Itoa(p.TotalPower) + "/" + strconv.Itoa(totalPower()) + "\\n"
 \tif p.ExpiresAt > 0 {
@@ -611,6 +649,7 @@ func VoteOnProposal(cur realm, id int, vote string) {
 }
 
 func ExecuteProposal(cur realm, id int) {
+\tassertNotArchived()
 \tcaller := unsafe.PreviousRealm().Address()
 \tassertMember(caller)
 \tp := getProposal(id)
@@ -788,6 +827,7 @@ func executeAssignRole(data string) {
 // ── Role Management (admin-only) ──────────────────────────
 
 func AssignRole(cur realm, target address, role string) {
+\tassertNotArchived()
 \tcaller := unsafe.PreviousRealm().Address()
 \tassertAdmin(caller)
 \tassertRole(role)
@@ -804,6 +844,7 @@ func AssignRole(cur realm, target address, role string) {
 }
 
 func RemoveRole(cur realm, target address, role string) {
+\tassertNotArchived()
 \tcaller := unsafe.PreviousRealm().Address()
 \tassertAdmin(caller)
 \tif role == "admin" {
@@ -848,7 +889,7 @@ func IsArchived() bool {
 
 func assertNotArchived() {
 \tif archived {
-\t\tpanic("DAO is archived — no new proposals or votes")
+\t\tpanic("DAO is archived — changes are disabled")
 \t}
 }
 

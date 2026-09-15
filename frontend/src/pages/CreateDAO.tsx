@@ -11,11 +11,10 @@ import { WizardStepConfig } from "../components/dao/WizardStepConfig"
 import { WizardStepReview } from "../components/dao/WizardStepReview"
 import { WizardStepExtensions } from "../components/dao/WizardStepExtensions"
 import type { MemberInput, Step } from "../components/dao/wizardShared"
-import { generateDAOCode, buildDeployDAOMsg, daoStepError, DAO_PRESETS, type DAOCreationConfig, type DAOPreset, type DAOStepData } from "../lib/daoTemplate"
-import { generateChannelCode, defaultChannelConfig } from "../lib/channelTemplate"
+import { generateDAOCode, buildDeployDAOMsg, daoStepError, isValidGnoAddress, DAO_PRESETS, type DAOCreationConfig, type DAOPreset, type DAOStepData } from "../lib/daoTemplate"
+import { generateChannelCode, defaultChannelConfig, isValidChannelName } from "../lib/channelTemplate"
 import { buildDeployMsg } from "../lib/templates/prologue"
 import { addSavedDAO, encodeSlug } from "../lib/daoSlug"
-import { BECH32_PREFIX } from "../lib/config"
 import { doContractBroadcast } from "../lib/grc20"
 import type { LayoutContext } from "../types/layout"
 import "./createdao.css"
@@ -42,18 +41,35 @@ interface DraftData {
     savedAt: number
 }
 
+function isDraft(value: unknown): value is DraftData {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false
+    const d = value as Record<string, unknown>
+    const strings = (v: unknown): v is string[] => Array.isArray(v) && v.every(x => typeof x === "string")
+    if (![d.name, d.description, d.realmPath].every(v => typeof v === "string")) return false
+    if (!strings(d.availableRoles) || !strings(d.proposalCategories)) return false
+    if (!Array.isArray(d.members) || !d.members.every(m => m && typeof m === "object" &&
+        typeof m.address === "string" && Number.isSafeInteger(m.power) && strings(m.roles))) return false
+    if (!Number.isSafeInteger(d.threshold) || !Number.isSafeInteger(d.quorum)) return false
+    if (d.selectedPreset !== null && (typeof d.selectedPreset !== "string" || !DAO_PRESETS.some(p => p.id === d.selectedPreset))) return false
+    if (typeof d.step !== "number" || !Number.isInteger(d.step) || d.step < 1 || d.step > 5) return false
+    if (typeof d.savedAt !== "number" || !Number.isFinite(d.savedAt) || d.savedAt > Date.now() || Date.now() - d.savedAt > DRAFT_TTL_MS) return false
+    if ([d.enableChannels, d.enableBoard].some(v => v !== undefined && typeof v !== "boolean")) return false
+    if ([d.channelNames, d.boardChannels].some(v => v !== undefined && !strings(v))) return false
+    return true
+}
+
 function loadDraft(): DraftData | null {
     try {
         const raw = localStorage.getItem(DRAFT_KEY)
         if (!raw) return null
-        const draft: DraftData = JSON.parse(raw)
-        if (Date.now() - draft.savedAt > DRAFT_TTL_MS) {
-            localStorage.removeItem(DRAFT_KEY)
+        const draft: unknown = JSON.parse(raw)
+        if (!isDraft(draft)) {
+            clearDraft()
             return null
         }
         return draft
     } catch {
-        localStorage.removeItem(DRAFT_KEY)
+        clearDraft()
         return null
     }
 }
@@ -65,7 +81,7 @@ function saveDraft(data: Omit<DraftData, "savedAt">) {
 }
 
 function clearDraft() {
-    localStorage.removeItem(DRAFT_KEY)
+    try { localStorage.removeItem(DRAFT_KEY) } catch { /* Storage access must not turn a confirmed transaction into a failure. */ }
 }
 
 // ── Main Component (Orchestrator) ─────────────────────────
@@ -117,7 +133,26 @@ export function CreateDAO() {
         const draftNames = draft.channelNames ?? draft.boardChannels
         if (draftNames) setChannelNames(draftNames)
         setSelectedPreset(draft.selectedPreset)
-        setStep(draft.step)
+        let resumeStep = draft.step
+        if (resumeStep === 5) {
+            try {
+                for (const step of [1, 2, 3]) {
+                    const error = daoStepError(step, draft)
+                    if (error) throw new Error(error)
+                }
+                const preset = DAO_PRESETS.find(p => p.id === draft.selectedPreset)
+                setGeneratedCode(generateDAOCode({
+                    name: draft.name, description: draft.description, realmPath: draft.realmPath,
+                    members: draft.members.filter(m => m.address !== ""), roles: draft.availableRoles,
+                    threshold: draft.threshold, quorum: draft.quorum, proposalCategories: draft.proposalCategories,
+                    votingPeriodBlocks: preset?.votingPeriodBlocks ?? 151200,
+                }))
+            } catch {
+                resumeStep = 1
+                setValidationError("This draft needs review. Check its settings before deploying.")
+            }
+        }
+        setStep(resumeStep)
         setShowDraftBanner(false)
     }
 
@@ -130,6 +165,7 @@ export function CreateDAO() {
 
     useEffect(() => {
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+        if (showDraftBanner || deploying || deployResult) return
         saveTimerRef.current = setTimeout(() => {
             if (name || realmPath || members.some((m) => m.address)) {
                 saveDraft({
@@ -140,7 +176,7 @@ export function CreateDAO() {
             }
         }, 500)
         return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }
-    }, [name, description, realmPath, members, threshold, quorum, availableRoles, proposalCategories, selectedPreset, step, enableChannels, channelNames])
+    }, [name, description, realmPath, members, threshold, quorum, availableRoles, proposalCategories, selectedPreset, step, enableChannels, channelNames, showDraftBanner, deploying, deployResult])
 
     // ── Preset ────────────────────────────────────────────
 
@@ -180,7 +216,7 @@ export function CreateDAO() {
             const config: DAOCreationConfig = {
                 name, description, realmPath, threshold, quorum, proposalCategories,
                 roles: availableRoles,
-                members: members.filter((m) => m.address.startsWith(BECH32_PREFIX)),
+                members: members.filter((m) => m.address !== ""),
                 votingPeriodBlocks: preset?.votingPeriodBlocks ?? 151200,
             }
             // W1.1: codegen is fail-closed and throws on invalid input. Steps
@@ -216,20 +252,39 @@ export function CreateDAO() {
     // ── Deploy ────────────────────────────────────────────
 
     const deployDAO = async () => {
+        if (deploying || deployResult) return
         if (!adena.address) { setError("Connect your wallet first"); return }
         setDeploying(true)
         setDeployStep("preparing")
         setError(null)
         try {
+            for (const step of [1, 2, 3]) {
+                const error = daoStepError(step, buildStepData())
+                if (error) throw new Error(error)
+            }
             const preset = DAO_PRESETS.find(p => p.id === selectedPreset)
             const config: DAOCreationConfig = {
                 name, description, realmPath, threshold, quorum, proposalCategories,
                 roles: availableRoles,
-                members: members.filter((m) => m.address.startsWith(BECH32_PREFIX)),
+                members: members.filter((m) => m.address !== ""),
                 votingPeriodBlocks: preset?.votingPeriodBlocks ?? 151200,
             }
             const code = generateDAOCode(config)
             const msg = buildDeployDAOMsg(adena.address, realmPath, code, "10000000ugnot")
+
+            // Validate both packages before the first wallet request. A local
+            // extension error must not leave an unexpectedly partial deployment.
+            let channelMsg: ReturnType<typeof buildDeployMsg> | undefined
+            if (enableChannels) {
+                if (channelNames.length < 1 || channelNames.length > 5 ||
+                    channelNames.some(n => !isValidChannelName(n)) || new Set(channelNames).size !== channelNames.length) {
+                    throw new Error("Choose one to five valid, distinct channel names before deploying")
+                }
+                const channelConfig = defaultChannelConfig(realmPath, name)
+                channelConfig.channels = channelNames.map(n => ({ name: n, type: "text", acl: { readRoles: [], writeRoles: [] } }))
+                channelConfig.members = config.members.map(m => ({ address: m.address, roles: m.roles }))
+                channelMsg = buildDeployMsg(adena.address, channelConfig.channelRealmPath, generateChannelCode(channelConfig), "10000000ugnot")
+            }
 
             setDeployStep("signing")
 
@@ -245,43 +300,32 @@ export function CreateDAO() {
 
             setDeployStep("broadcasting")
 
-            addSavedDAO(realmPath, name)
+            // Preserve the confirmed primary result even if a later wallet
+            // request or local-storage write fails. Never offer to redeploy it.
+            const result: DeploymentResult = {
+                realmPath, entityPath: `/dao/${encodeSlug(realmPath)}`,
+                entityLabel: "DAO", entityName: name, txHash: res.hash,
+            }
+            const warnings: string[] = []
+            setDeployResult(result)
+            try { addSavedDAO(realmPath, name) } catch {
+                warnings.push("Your DAO was created, but could not be saved in this browser. Keep its realm path.")
+            }
+            clearDraft()
 
-            // ── Deploy Channels companion realm if enabled (W1.5: hardened
-            // channels path — boardTemplate is deprecated for new deploys) ──
-            if (enableChannels) {
-                setDeployStep("preparing")
+            if (channelMsg) {
+                setDeployStep("signing")
                 try {
-                    const channelConfig = defaultChannelConfig(realmPath, name)
-                    channelConfig.channels = channelNames.map((n) => ({
-                        name: n, type: "text", acl: { readRoles: [], writeRoles: [] },
-                    }))
-                    // Seed the roster from the wizard's member step so role-gated
-                    // channels work from block one; later DAO members are admitted
-                    // via the realm's parent.IsMember() fallback.
-                    channelConfig.members = config.members.map((m) => ({ address: m.address, roles: m.roles }))
-                    const channelCode = generateChannelCode(channelConfig)
-                    const channelMsg = buildDeployMsg(adena.address, channelConfig.channelRealmPath, channelCode, "10000000ugnot")
                     await doContractBroadcast(
                         [{ type: "/vm.m_addpkg", value: channelMsg.value }],
-                        `Deploy Channels for ${name}`,
-                        { gas: "deploy" },
+                        `Deploy Channels for ${name}`, { gas: "deploy" },
                     )
                 } catch (channelErr) {
-                    console.warn("[Memba] Channels deploy error:", channelErr)
-                    // Non-fatal: DAO was deployed successfully
+                    warnings.push(`Channels deployment was not confirmed: ${friendlyError(channelErr)}. Your DAO is already created. Check the Channels realm before attempting a separate deployment.`)
                 }
             }
 
-            clearDraft()
-            const slug = encodeSlug(realmPath)
-            setDeployResult({
-                realmPath,
-                entityPath: `/dao/${slug}`,
-                entityLabel: "DAO",
-                entityName: name,
-                txHash: res.hash,
-            })
+            setDeployResult({ ...result, warnings })
             setDeployStep("complete")
         } catch (err) {
             setError(friendlyError(err))
@@ -293,7 +337,7 @@ export function CreateDAO() {
 
     // ── Derived ───────────────────────────────────────────
 
-    const validMembers = members.filter((m) => m.address.startsWith(BECH32_PREFIX))
+    const validMembers = members.filter((m) => isValidGnoAddress(m.address))
     const totalPower = validMembers.reduce((sum, m) => sum + m.power, 0)
     const adminCount = validMembers.filter((m) => m.roles.includes("admin")).length
 
@@ -437,7 +481,10 @@ export function CreateDAO() {
                 error={error ?? undefined}
                 onNavigate={() => deployResult?.entityPath && navigate(deployResult.entityPath)}
                 onRetry={() => { setDeployStep("idle"); setError(null) }}
-                onClose={() => { setDeployStep("idle"); setError(null) }}
+                onClose={() => {
+                    if (deployResult?.entityPath) navigate(deployResult.entityPath)
+                    else { setDeployStep("idle"); setError(null) }
+                }}
             />
 
             <ErrorToast message={deployStep === "idle" ? error : null} onDismiss={() => setError(null)} />

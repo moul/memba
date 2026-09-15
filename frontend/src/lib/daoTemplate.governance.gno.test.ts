@@ -79,6 +79,22 @@ func mustPanicDirect(t *testing.T, what string, fn func()) {
 \tfn()
 }
 
+// Archive must enforce the read-only behavior offered by the frontend.
+func TestArchiveStopsManagement(cur realm, t *testing.T) {
+\ttesting.SetRealm(alice)
+\tid := Propose(cross(cur), "before archive", "d", "governance")
+\tVoteOnProposal(cross(cur), id, "YES")
+\ttesting.SetRealm(bob)
+\tVoteOnProposal(cross(cur), id, "YES")
+\ttesting.SkipHeights(601)
+\ttesting.SetRealm(alice)
+\tArchive(cross(cur))
+\tdefer func() { archived = false }() // isolate the remaining fixture cases
+\tmustAbort(t, "execute after archive", func() { ExecuteProposal(cross(cur), id) })
+\tmustAbort(t, "assign role after archive", func() { AssignRole(cross(cur), address("${BOB}"), "admin") })
+\tmustAbort(t, "remove role after archive", func() { RemoveRole(cross(cur), address("${BOB}"), "member") })
+}
+
 // CHN-5: REJECT fires exactly when passage becomes impossible — not on the old
 // asymmetric NO-threshold, which would NOT have rejected this proposal
 // (NO=30% is not > 40%) even though it can never pass.
@@ -238,6 +254,7 @@ describeGno("generated DAO governance proves out under `gno test` (W1.3)", () =>
             const out = `${res.stdout ?? ""}${res.stderr ?? ""}`
             expect(res.status, `gno test failed:\n${out}`).toBe(0)
             for (const name of [
+                "TestArchiveStopsManagement",
                 "TestRejectOnImpossibility",
                 "TestAcceptOnlyWhenIrreversible",
                 "TestExecutionDelayFloor",

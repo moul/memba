@@ -50,7 +50,9 @@ const READS_TEST_GNO = `package gate_dao_reads
 
 import (
 \t"strings"
+\t"strconv"
 \t"testing"
+\t"chain/runtime"
 )
 
 var alice = testing.NewUserRealm(address("${ALICE}"))
@@ -62,6 +64,26 @@ func seed(cur realm) {
 \tPropose(cross(cur), "say \\"hi\\"\\nplease", "body", "governance")
 \tfor i := 0; i < 24; i++ {
 \t\tPropose(cross(cur), "prop", "body", "governance")
+\t}
+}
+
+func TestExpiredStatusAcrossReads(cur realm, t *testing.T) {
+\ttesting.SetRealm(alice)
+\tid := Propose(cross(cur), "expiry", "d", "governance")
+\tdefer func() { proposals.Remove(padID(id)) }()
+\tp := getProposal(id)
+\ttesting.SkipHeights(p.ExpiresAt - runtime.ChainHeight())
+\tif !strings.Contains(Render(strconv.Itoa(id)), "Status: ACTIVE") {
+\t\tt.Fatal("voting remains open at the inclusive final block")
+\t}
+\ttesting.SkipHeights(1)
+\tif !strings.Contains(GetProposalsJSON(), "EXPIRED") || !strings.Contains(Render(""), "Status: EXPIRED") || !strings.Contains(Render(strconv.Itoa(id)), "Status: EXPIRED") {
+\t\tt.Fatal("expired proposal must read as EXPIRED through JSON, list and detail without a failed vote")
+\t}
+\tif p.Status != "ACTIVE" { t.Fatal("read methods must not mutate proposal state") }
+\tp.Status = "ACCEPTED"
+\tif !strings.Contains(GetProposalsJSON(), "ACCEPTED") {
+\t\tt.Fatal("an already accepted proposal must remain executable after its voting deadline")
 \t}
 }
 
@@ -166,6 +188,7 @@ describeGno("generated DAO structured reads prove out under `gno test` (W1.4)", 
         const out = `${res.stdout ?? ""}${res.stderr ?? ""}`
         expect(res.status, `gno test failed:\n${out}`).toBe(0)
         expect(out, "expected an explicit PASS").toContain("--- PASS: TestJSONExportsAndPagination")
+        expect(out).toContain("--- PASS: TestExpiredStatusAcrossReads")
 
         // The realm printed both raw blobs — parse them to prove the ENCODER
         // produces well-formed JSON. (The wire-format decode is dao/qevalJSON.test.ts.)
