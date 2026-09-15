@@ -11,11 +11,10 @@ import { WizardStepConfig } from "../components/dao/WizardStepConfig"
 import { WizardStepReview } from "../components/dao/WizardStepReview"
 import { WizardStepExtensions } from "../components/dao/WizardStepExtensions"
 import type { MemberInput, Step } from "../components/dao/wizardShared"
-import { generateDAOCode, buildDeployDAOMsg, daoStepError, DAO_PRESETS, type DAOCreationConfig, type DAOPreset, type DAOStepData } from "../lib/daoTemplate"
+import { generateDAOCode, buildDeployDAOMsg, daoStepError, isValidGnoAddress, DAO_PRESETS, type DAOCreationConfig, type DAOPreset, type DAOStepData } from "../lib/daoTemplate"
 import { generateChannelCode, defaultChannelConfig } from "../lib/channelTemplate"
 import { buildDeployMsg } from "../lib/templates/prologue"
 import { addSavedDAO, encodeSlug } from "../lib/daoSlug"
-import { BECH32_PREFIX } from "../lib/config"
 import { doContractBroadcast } from "../lib/grc20"
 import type { LayoutContext } from "../types/layout"
 import "./createdao.css"
@@ -180,7 +179,7 @@ export function CreateDAO() {
             const config: DAOCreationConfig = {
                 name, description, realmPath, threshold, quorum, proposalCategories,
                 roles: availableRoles,
-                members: members.filter((m) => m.address.startsWith(BECH32_PREFIX)),
+                members: members.filter((m) => m.address !== ""),
                 votingPeriodBlocks: preset?.votingPeriodBlocks ?? 151200,
             }
             // W1.1: codegen is fail-closed and throws on invalid input. Steps
@@ -225,7 +224,7 @@ export function CreateDAO() {
             const config: DAOCreationConfig = {
                 name, description, realmPath, threshold, quorum, proposalCategories,
                 roles: availableRoles,
-                members: members.filter((m) => m.address.startsWith(BECH32_PREFIX)),
+                members: members.filter((m) => m.address !== ""),
                 votingPeriodBlocks: preset?.votingPeriodBlocks ?? 151200,
             }
             const code = generateDAOCode(config)
@@ -293,7 +292,7 @@ export function CreateDAO() {
 
     // ── Derived ───────────────────────────────────────────
 
-    const validMembers = members.filter((m) => m.address.startsWith(BECH32_PREFIX))
+    const validMembers = members.filter((m) => isValidGnoAddress(m.address))
     const totalPower = validMembers.reduce((sum, m) => sum + m.power, 0)
     const adminCount = validMembers.filter((m) => m.roles.includes("admin")).length
 

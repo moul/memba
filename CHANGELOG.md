@@ -20,6 +20,12 @@ Full changelogs are split by version range for easier navigation:
 
 ## [Unreleased]
 
+### DAO creation preserves the reviewed founding configuration (2026-09-15)
+<!-- categories: memba -->
+- Reject duplicate founding addresses, empty or invalid rosters, zero aggregate voting power, missing admins and inconsistent role/category lists before generating an immutable DAO. Invalid input is no longer silently filtered from the reviewed configuration.
+- Validate Gno package identifiers during the first wizard step and reject duplicate members during the member step. Empty spare input rows remain optional; valid zero-power and role-less members remain supported.
+- Add generator regressions and browser checks for duplicate-founder correction and invalid package names. Existing deployed DAO behavior and governance policy remain unchanged.
+
 ### Short touch taps reliably start and fire in Space Invaders (2026-09-15)
 <!-- categories: memba -->
 - Completed fire taps are held until a fixed simulation step consumes them, including slow frames and high-refresh frames with no simulation step. Held firing and deterministic daily replay remain unchanged.

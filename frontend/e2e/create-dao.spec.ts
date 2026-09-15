@@ -35,4 +35,30 @@ test.describe('Create DAO Wizard', () => {
         await expect(page.getByRole('heading', { name: /Create a DAO/ })).toBeVisible()
         await expectNoMobileOverflow(page)
     })
+    test('duplicate founders are rejected before governance review', async ({ page }) => {
+        await page.goto('/dao/create')
+        await page.getByPlaceholder('My DAO', { exact: true }).fill('Configuration Test DAO')
+        await page.getByPlaceholder('gno.land/r/username/mydao', { exact: true }).fill('gno.land/r/test/configuration_test')
+        await page.getByRole('button', { name: 'Next: Members & Roles →' }).click()
+        const address = 'g1747t5m2f08plqjlrjk2q0qld7465hxz8gkx59c'
+        await page.getByPlaceholder('g1...', { exact: true }).first().fill(address)
+        await page.getByRole('button', { name: /Add Member/ }).click()
+        await page.getByPlaceholder('g1...', { exact: true }).nth(1).fill(address)
+        await page.getByRole('button', { name: 'Next: Governance →' }).click()
+        await expect(page.getByText('Duplicate member addresses are not allowed')).toBeVisible()
+        await expect(page.getByRole('heading', { name: 'Initial Members & Roles' })).toBeVisible()
+        await page.getByPlaceholder('g1...', { exact: true }).nth(1).fill('g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5')
+        await page.getByRole('button', { name: 'Next: Governance →' }).click()
+        await expect(page.getByText('Governance Settings', { exact: true }).first()).toBeVisible()
+    })
+
+    test('an invalid Gno package name stays on the first step', async ({ page }) => {
+        await page.goto('/dao/create')
+        await page.getByPlaceholder('My DAO', { exact: true }).fill('Configuration Test DAO')
+        await page.getByPlaceholder('gno.land/r/username/mydao', { exact: true }).fill('gno.land/r/test/123dao')
+        await page.getByRole('button', { name: 'Next: Members & Roles →' }).click()
+        await expect(page.getByText('Realm name must be a valid, non-reserved Gno package identifier')).toBeVisible()
+        await expect(page.getByPlaceholder('My DAO', { exact: true })).toBeVisible()
+    })
+
 })
