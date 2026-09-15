@@ -20,6 +20,12 @@ Full changelogs are split by version range for easier navigation:
 
 ## [Unreleased]
 
+### DAO creation recovery and expired proposal reads (2026-09-15)
+
+- Validate saved drafts before resuming, restore the generated code preview, and preserve a pending draft until Resume or Discard is chosen.
+- Validate optional Channels before the first wallet request. Preserve the confirmed DAO and its transaction if Channels or browser storage fails, show the incomplete setup, and avoid offering a duplicate DAO deployment.
+- Derive expired voting status consistently in generated realm list/detail/JSON reads and show an EXPIRED badge without voting or execution controls. Accepted proposals retain their existing post-deadline execution behavior. Existing immutable realms require separate migration or compatible read support.
+
 ### DAO creation preserves the reviewed founding configuration (2026-09-15)
 <!-- categories: memba -->
 - Reject duplicate founding addresses, empty or invalid rosters, zero aggregate voting power, missing admins and inconsistent role/category lists before generating an immutable DAO. Invalid input is no longer silently filtered from the reviewed configuration.

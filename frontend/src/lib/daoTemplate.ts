@@ -368,6 +368,15 @@ func jsonEsc(s string) string {
 \treturn out + "\\""
 }
 
+// Expiry is derived on reads: a failed late vote rolls its state changes
+// back. Accepted proposals keep their existing execution lifecycle.
+func proposalStatus(p *Proposal) string {
+\tif p.Status == "ACTIVE" && p.ExpiresAt > 0 && runtime.ChainHeight() > p.ExpiresAt {
+\t\treturn "EXPIRED"
+\t}
+\treturn p.Status
+}
+
 // GetProposalsJSON returns every proposal as a JSON array (newest first), the
 // snake_case shape dao/proposals.ts already reads. Frontend prefers this over
 // Render() scraping; keep the keys in sync with that parser.
@@ -384,7 +393,7 @@ func GetProposalsJSON() string {
 \t\tout += ",\\"title\\":" + jsonEsc(p.Title)
 \t\tout += ",\\"description\\":" + jsonEsc(p.Description)
 \t\tout += ",\\"category\\":" + jsonEsc(p.Category)
-\t\tout += ",\\"status\\":" + jsonEsc(p.Status)
+\t\tout += ",\\"status\\":" + jsonEsc(proposalStatus(p))
 \t\tout += ",\\"author\\":" + jsonEsc(string(p.Author))
 \t\tout += ",\\"yes_votes\\":" + strconv.Itoa(p.YesVotes)
 \t\tout += ",\\"no_votes\\":" + strconv.Itoa(p.NoVotes)
@@ -481,7 +490,7 @@ func renderHome(page int) string {
 \t\tout += "### [Prop #" + strconv.Itoa(p.ID) + " - " + p.Title + "](:" + strconv.Itoa(p.ID) + ")\\n"
 \t\tout += "Author: " + string(p.Author) + "\\n\\n"
 \t\tout += "Category: " + p.Category + "\\n\\n"
-\t\tout += "Status: " + p.Status + "\\n\\n---\\n\\n"
+\t\tout += "Status: " + proposalStatus(p) + "\\n\\n---\\n\\n"
 \t\tshown++
 \t\treturn false
 \t})
@@ -507,7 +516,7 @@ func renderProposal(p *Proposal) string {
 \tout += p.Description + "\\n\\n"
 \tout += "Author: " + string(p.Author) + "\\n\\n"
 \tout += "Category: " + p.Category + "\\n\\n"
-\tout += "Status: " + p.Status + "\\n\\n"
+\tout += "Status: " + proposalStatus(p) + "\\n\\n"
 \tout += "YES: " + strconv.Itoa(p.YesVotes) + " | NO: " + strconv.Itoa(p.NoVotes) + " | ABSTAIN: " + strconv.Itoa(p.Abstain) + "\\n"
 \tout += "Total Power: " + strconv.Itoa(p.TotalPower) + "/" + strconv.Itoa(totalPower()) + "\\n"
 \tif p.ExpiresAt > 0 {

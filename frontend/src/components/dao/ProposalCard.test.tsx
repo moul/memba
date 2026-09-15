@@ -47,4 +47,10 @@ describe("ProposalCard — vote-load-failure honesty (P1-8)", () => {
         renderCard(makeProposal({ enrichFailed: false }))
         expect(screen.queryByText(/couldn.?t load votes/i)).not.toBeInTheDocument()
     })
+    it("labels expired proposals without inviting another vote", () => {
+        renderCard(makeProposal({ status: "expired" }))
+        expect(screen.getByText("EXPIRED", { exact: true })).toBeInTheDocument()
+        expect(screen.queryByText(/vote now|not voted/i)).not.toBeInTheDocument()
+    })
+
 })

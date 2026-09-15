@@ -88,6 +88,19 @@ describe('transaction controls using the real proposal parser', () => {
         expect(screen.queryByRole('button', { name: 'Execute proposal 4' })).not.toBeInTheDocument()
         expect(state.broadcast).not.toHaveBeenCalled()
     })
+    it('shows a generated realm expiry without offering voting or execution', async () => {
+        vi.mocked(resilientAbciQuery).mockResolvedValue([
+            '# Prop #4 - Expired vote', 'body', '', 'Author: g1testmember', '',
+            'Category: governance', '', 'Status: EXPIRED', '',
+            'YES: 0 | NO: 0 | ABSTAIN: 0', 'Total Power: 0/10',
+            'Voting closes at block: 100', '',
+        ].join('\n'))
+        mount()
+        await screen.findByText('EXPIRED', { exact: true })
+        expect(screen.queryByRole('button', { name: 'Vote Yes on this proposal' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Execute proposal 4' })).not.toBeInTheDocument()
+        expect(state.broadcast).not.toHaveBeenCalled()
+    })
     it('retains execution membership restrictions', async () => {
         state.status = 'passed'; state.member = false; mount()
         await screen.findByText('Proposal to unlock the transfer of ugnot.')
