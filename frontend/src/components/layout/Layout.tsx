@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from "react"
-import { Outlet } from "react-router-dom"
+import { Outlet, useLocation } from "react-router-dom"
 import { XLogo, InstagramLogo, YoutubeLogo, GithubLogo, LinkedinLogo, TelegramLogo, EnvelopeSimple } from "@phosphor-icons/react"
 import { useAdena } from "../../hooks/useAdena"
 import { useBalance } from "../../hooks/useBalance"
@@ -14,6 +14,8 @@ import { buildTokenRequestInfo } from "../../lib/loginChallenge"
 import { ACTIVATION_REQUIRED_CODE, ACTIVATION_LOGIN_MSG } from "../../lib/loginErrors"
 import { syncQuestsToBackend, completeQuest, setQuestWalletAddress, checkAndSetLegacyEligibility } from "../../lib/quests"
 import { DesktopShell } from "./DesktopShell"
+import { PRO_APP_ENABLED, PRO_SHELL_ENABLED } from "../../lib/config"
+import "./professional-shell.css"
 import { MobileShell } from "./MobileShell"
 import { TopBar } from "./TopBar"
 import { MobileTabBar } from "./MobileTabBar"
@@ -36,6 +38,11 @@ import { networkHasRealms, GNO_FAUCET_URL } from "../../lib/config"
 import { OnboardingWizard } from "../ui/OnboardingWizard"
 import { hasSeenWizard } from "../../lib/onboarding"
 import { RouteMetaSync } from "./RouteMetaSync"
+import { isProValidatorsRoute } from "../../lib/proUi"
+import { isProGovernanceRoute } from "../../lib/proGovernance"
+import { professionalPage } from "../../lib/proApp"
+import "../../professional.css"
+import "../../pages/governance-professional.css"
 
 
 // Encode Uint8Array to base64 string (protojson format for bytes fields)
@@ -48,6 +55,10 @@ function bytesToBase64(bytes: Uint8Array): string {
 }
 
 export function Layout() {
+    const pathname = useLocation().pathname
+    const pageDesign = professionalPage(pathname)
+    const proUi = isProValidatorsRoute(pathname)
+    const proGovernance = isProGovernanceRoute(pathname)
     const adena = useAdena()
     const auth = useAuth()
     const isMobile = useIsMobile()
@@ -387,7 +398,7 @@ export function Layout() {
             <RouteMetaSync />
 
             {/* ── Main ─────────────────────────────────────── */}
-            <main id="main-content" className="k-main">
+            <main id="main-content" className="k-main" data-page-family={PRO_APP_ENABLED ? pageDesign.family : undefined} data-page-layout={PRO_APP_ENABLED ? pageDesign.layout : undefined}>
                 {/* B8: Universal guard — show loader while wallet is syncing */}
                 {isLoggingIn ? (
                     <ConnectingLoader />
@@ -437,7 +448,7 @@ export function Layout() {
     return (
         <OrgProvider>
         <JitsiProvider>
-            <div className={`k-app-layout${sidebarCollapsed ? " k-sidebar-collapsed" : ""}`}>
+            <div className={`k-app-layout${PRO_APP_ENABLED ? " k-pro-app" : ""}${PRO_SHELL_ENABLED ? " k-pro-shell" : ""}${proUi ? " k-pro-ui" : ""}${proGovernance ? " k-pro-governance" : ""}${sidebarCollapsed ? " k-sidebar-collapsed" : ""}`}>
                 {/* Skip to content (accessibility — focus-only) */}
                 <a href="#main-content" className="k-skip-to-content">
                     Skip to content

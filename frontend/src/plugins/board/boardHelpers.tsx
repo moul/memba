@@ -44,7 +44,7 @@ export function renderMarkdown(text: string): React.ReactNode[] {
         } else if (token.startsWith("*")) {
             parts.push(<em key={key++}>{token.slice(1, -1)}</em>)
         } else if (token.startsWith("`")) {
-            parts.push(<code key={key++} style={{ padding: "1px 5px", borderRadius: 4, background: "rgba(255,255,255,0.06)", fontSize: 12 }}>{token.slice(1, -1)}</code>)
+            parts.push(<code key={key++} style={{ padding: "1px 5px", borderRadius: 4, background: "rgba(255,255,255,0.06)", fontSize: "var(--pro-small, 12px)" }}>{token.slice(1, -1)}</code>)
         } else if (token.startsWith("[")) {
             const linkMatch = token.match(/\[([^\]]+)\]\(([^)]+)\)/)
             if (linkMatch) {
@@ -58,8 +58,8 @@ export function renderMarkdown(text: string): React.ReactNode[] {
                     color: "var(--color-primary)",
                     padding: "1px 4px",
                     borderRadius: 4,
-                    fontSize: 12,
-                    fontFamily: "JetBrains Mono, monospace",
+                    fontSize: "var(--pro-small, 12px)",
+                    fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
                 }}>
                     {token}
                 </span>
@@ -148,8 +148,8 @@ export const btnStyle: React.CSSProperties = {
     borderRadius: 8,
     border: "none",
     cursor: "pointer",
-    fontFamily: "JetBrains Mono, monospace",
-    fontSize: 12,
+    fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
+    fontSize: "var(--pro-small, 12px)",
     fontWeight: 600,
 }
 
@@ -173,7 +173,7 @@ export const inputStyle: React.CSSProperties = {
     border: "1px solid rgba(255,255,255,0.08)",
     background: "rgba(0,0,0,0.3)",
     color: "var(--color-text)",
-    fontFamily: "JetBrains Mono, monospace",
-    fontSize: 13,
+    fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
+    fontSize: "var(--pro-small, 13px)",
     boxSizing: "border-box",
 }

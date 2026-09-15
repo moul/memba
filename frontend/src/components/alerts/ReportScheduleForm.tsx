@@ -27,20 +27,20 @@ const inputStyle: React.CSSProperties = {
     width: "100%", padding: "8px 12px", borderRadius: 8,
     border: "1px solid rgba(255,255,255,0.08)",
     background: "rgba(0,0,0,0.3)", color: "var(--color-text)",
-    fontFamily: "JetBrains Mono, monospace", fontSize: 12,
+    fontFamily: "var(--font-ui, JetBrains Mono, monospace)", fontSize: "var(--pro-small, 12px)",
     boxSizing: "border-box", cursor: "pointer",
 }
 
 const labelStyle: React.CSSProperties = {
-    fontSize: 11, color: "var(--color-text-secondary)",
-    fontFamily: "JetBrains Mono, monospace",
+    fontSize: "var(--pro-caption, 11px)", color: "var(--color-text-secondary)",
+    fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
     display: "block", marginBottom: 4,
 }
 
 const btnStyle: React.CSSProperties = {
     padding: "8px 16px", borderRadius: 8, border: "none",
-    cursor: "pointer", fontFamily: "JetBrains Mono, monospace",
-    fontSize: 12, fontWeight: 600,
+    cursor: "pointer", fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
+    fontSize: "var(--pro-small, 12px)", fontWeight: 600,
 }
 
 function detectTimezone(): string {
@@ -114,8 +114,8 @@ export function ReportScheduleForm({ schedule, onSave }: Props) {
                 padding: "10px 14px", borderRadius: 8,
                 background: "rgba(0,212,170,0.04)",
                 border: "1px solid rgba(0,212,170,0.1)",
-                fontSize: 11, color: "var(--color-primary)",
-                fontFamily: "JetBrains Mono, monospace",
+                fontSize: "var(--pro-caption, 11px)", color: "var(--color-primary)",
+                fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
             }}>
                 📋 Daily report at <strong>{pad(hour)}:{pad(minute)}</strong> {timezone}
             </div>
@@ -134,7 +134,7 @@ export function ReportScheduleForm({ schedule, onSave }: Props) {
                     {saving ? "Saving…" : "Save Schedule"}
                 </button>
                 {saved && (
-                    <span style={{ fontSize: 11, color: "var(--color-primary)", fontFamily: "JetBrains Mono, monospace" }}>
+                    <span style={{ fontSize: "var(--pro-caption, 11px)", color: "var(--color-primary)", fontFamily: "var(--font-ui, JetBrains Mono, monospace)" }}>
                         ✓ Saved
                     </span>
                 )}

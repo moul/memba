@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react"
-import { SunDim, Moon } from "@phosphor-icons/react"
+import { useState } from "react"
 import { CopyableAddress } from "../ui/CopyableAddress"
-import { validateActiveRpcDomain, selectableNetworksFor } from "../../lib/config"
+import { APP_VERSION, validateActiveRpcDomain, selectableNetworksFor } from "../../lib/config"
 import { NotificationBell } from "./NotificationBell"
 import type { Notification } from "../../lib/notifications"
-import { getTheme, toggleTheme, type Theme } from "../../lib/themeStore"
+import { PRO_APP_ENABLED } from "../../lib/professionalFlags"
+import { ThemeToggle } from "../ui/ThemeSelect"
 
 // ── Types ──────────────────────────────────────────────────────────────
 interface TopBarProps {
@@ -69,7 +69,7 @@ export function TopBar({ adena, auth, compactBalance, network, isLoggingIn, auth
                 {/* Left: badges */}
                 <div className="k-topbar-left">
                     <span className="k-topbar-badge k-topbar-badge--alpha" data-testid="alpha-badge">Alpha</span>
-                    <span className="k-topbar-badge k-topbar-badge--version" data-testid="version-badge">v3</span>
+                    <span className="k-topbar-badge k-topbar-badge--version" data-testid="version-badge">{PRO_APP_ENABLED ? `v${APP_VERSION}` : "v3"}</span>
                 </div>
 
                 {/* Right: network + wallet */}
@@ -161,7 +161,7 @@ export function TopBar({ adena, auth, compactBalance, network, isLoggingIn, auth
                         style={{
                             background: "transparent", border: "1px solid currentColor",
                             color: "inherit", borderRadius: 4, padding: "2px 10px",
-                            fontSize: 12, fontWeight: 600, cursor: "pointer", marginRight: 4,
+                            fontSize: "var(--pro-small, 12px)", fontWeight: 600, cursor: "pointer", marginRight: 4,
                         }}
                     >
                         Retry
@@ -229,35 +229,6 @@ export function TopBar({ adena, auth, compactBalance, network, isLoggingIn, auth
                 )
             })()}
         </>
-    )
-}
-
-// ── Theme Toggle ──────────────────────────────────────────────────────
-
-function ThemeToggle() {
-    const [theme, setThemeState] = useState<Theme>(getTheme)
-
-    // Sync with external changes (Settings page, Cmd+K)
-    useEffect(() => {
-        const observer = new MutationObserver(() => {
-            setThemeState(getTheme())
-        })
-        observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] })
-        return () => observer.disconnect()
-    }, [])
-
-    return (
-        <button
-            className="k-topbar-theme-toggle"
-            onClick={() => {
-                const next = toggleTheme()
-                setThemeState(next)
-            }}
-            title={`Switch to ${theme === "dark" ? "light" : "dark"} theme (⌘K)`}
-            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-        >
-            {theme === "dark" ? <SunDim size={18} weight="bold" /> : <Moon size={18} weight="bold" />}
-        </button>
     )
 }
 

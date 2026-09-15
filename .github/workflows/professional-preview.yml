@@ -1,0 +1,90 @@
+name: Professional preview
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/professional-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: professional-preview-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    name: Professional preview (four browsers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - name: Frontend unit tests
+        run: npm test -- --maxWorkers=4
+      - name: Default production build
+        run: npm run build
+      - name: Install preview browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Flag-on preview tests
+        run: npm run test:e2e:pro-ui
+      - name: Flag-on shell and brand tests
+        run: npm run test:e2e:pro-shell
+      - name: Flag-on governance tests
+        run: npm run test:e2e:pro-governance
+      - name: Upload preview evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: validators-preview-evidence
+          path: |
+            frontend/test-results/
+            frontend/test-results-shell/
+            frontend/test-results-governance/
+          retention-days: 14
+
+  complete:
+    name: Complete design (${{ matrix.suite }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [complete, complete-features]
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Complete interface and accessibility matrix
+        run: npm run test:e2e:${{ matrix.suite }}
+      - name: Full-design build
+        if: matrix.suite == 'complete'
+        run: npm run build
+        env:
+          VITE_ENABLE_PRO_APP: 'true'
+      - name: Upload route review evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: design-${{ matrix.suite }}
+          path: frontend/test-results-${{ matrix.suite }}/
+          retention-days: 14

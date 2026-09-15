@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { useOutletContext } from "react-router-dom"
+import { useLocation, useOutletContext } from "react-router-dom"
+import { isProGovernanceRoute } from "../lib/proGovernance"
 import { useNetworkNav } from "../hooks/useNetworkNav"
 import { useProposalDate } from "../hooks/useProposalDate"
 import { formatRelativeTime } from "../lib/blockTime"
@@ -25,11 +26,13 @@ import { AnalystReport } from "../components/dao/AnalystReport"
 import { useDaoRoute } from "../hooks/useDaoRoute"
 import { resolveOnChainUsername } from "../lib/profile"
 import { TierVoteBlock } from "../components/proposal"
+import { ProProposalVotes } from "../components/dao/ProProposalVotes"
 import { VotingInsights } from "../components/dao/TierPieChart"
 import type { LayoutContext } from "../types/layout"
 import "./proposalview.css"
 
 export function ProposalView() {
+    const professional = isProGovernanceRoute(useLocation().pathname)
     const { realmPath, encodedSlug, proposalId: routeProposalId } = useDaoRoute()
     const id = routeProposalId
     const navigate = useNetworkNav()
@@ -238,7 +241,8 @@ export function ProposalView() {
     if (!proposal) {
         return (
             <div className="animate-fade-in proposal-notfound">
-                <p>Proposal #{proposalId} not found</p>
+                <p>{professional ? `Proposal #${proposalId} is unavailable` : `Proposal #${proposalId} not found`}</p>
+                {professional && <><p>The proposal may not exist, or the network could not return it.</p><button className="k-btn-secondary" onClick={() => { void proposalQuery.refetch() }}>Retry proposal</button></>}
                 <button
                     onClick={() => navigate(`/dao/${encodedSlug}`)}
                     aria-label="Back to DAO"
@@ -295,7 +299,8 @@ export function ProposalView() {
                     </a>
                     <span
                         className="proposal-status-badge"
-                        style={{ background: sc.bg, color: sc.color }}
+                        data-status={proposal.status}
+                        style={professional ? undefined : { background: sc.bg, color: sc.color }}
                     >
                         {sc.label}
                     </span>
@@ -331,6 +336,8 @@ export function ProposalView() {
                 </h2>
             </div>
 
+            <div className="gov-reading-layout">
+            <div className="gov-reading-body">
             {/* Author Card */}
             {proposal.author && (
                 <div className="k-card proposal-author-card">
@@ -436,15 +443,18 @@ export function ProposalView() {
                 </div>
             )}
 
+            </div>
+            <div className="gov-reading-votes">
+            {professional && <h3 className="gov-section-title">Voting overview</h3>}
             {/* Voting Insights — 3-layer card (Participation / Vote Split / Tier Breakdown) */}
-            <VotingInsights
+            {professional ? <ProProposalVotes proposal={proposal} records={voteRecords} members={memberCount} threshold={cfg?.threshold} /> : <VotingInsights
                 yesVotes={proposal.yesVotes || voteRecords.reduce((s, r) => s + r.yesVoters.length, 0)}
                 noVotes={proposal.noVotes || voteRecords.reduce((s, r) => s + r.noVoters.length, 0)}
                 abstainVotes={proposal.abstainVotes || 0}
                 totalMembers={memberCount}
                 threshold={thresholdPct}
                 voteRecords={voteRecords}
-            />
+            />}
 
             {/* Tier-Grouped Vote Breakdown */}
             {voteRecords.length > 0 && (
@@ -495,10 +505,10 @@ export function ProposalView() {
                                 {/* v6 UX-04: Vote confirmation dialog */}
                                 {pendingVote && (
                                     <div className="proposal-confirm-dialog" role="alertdialog" aria-label="Confirm vote" style={{ background: "var(--color-k-panel)", border: "1px solid var(--color-k-edge)", borderRadius: 10, padding: 20, marginBottom: 16, textAlign: "center" }}>
-                                        <p style={{ marginBottom: 12, fontSize: 15 }}>
+                                        <p style={{ marginBottom: 12, fontSize: "var(--pro-body, 15px)" }}>
                                             Vote <strong>{pendingVote}</strong> on Proposal #{proposalId}?
                                         </p>
-                                        <p style={{ color: "var(--color-k-dim)", fontSize: 13, marginBottom: 16 }}>
+                                        <p style={{ color: "var(--color-k-dim)", fontSize: "var(--pro-small, 13px)", marginBottom: 16 }}>
                                             This is an on-chain action that costs gas and cannot be undone.
                                         </p>
                                         <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
@@ -551,10 +561,12 @@ export function ProposalView() {
 
             {!auth.isAuthenticated && (
                 <div className="k-dashed proposal-connect-cta">
-                    <p>Connect your wallet to vote on proposals</p>
+                    <p>{professional ? isArchived ? "This DAO is archived. Voting and execution are disabled." : proposal.status === "open" ? "Connect your wallet to check your voting eligibility." : proposal.status === "passed" ? "Voting has passed. Execution is available to eligible DAO members." : "Voting is closed. You can review the proposal and recorded votes." : "Connect your wallet to vote on proposals"}</p>
                 </div>
             )}
 
+            </div>
+            </div>
             <ErrorToast message={error} onDismiss={() => { setActionError(null); setFetchErrorDismissed(true) }} onRetry={() => { setActionError(null); setFetchErrorDismissed(false); void proposalQuery.refetch() }} />
         </div>
     )

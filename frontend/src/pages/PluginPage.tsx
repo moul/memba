@@ -31,8 +31,8 @@ export function PluginPage() {
                     onClick={() => navigate(`/dao/${encodedSlug}`)}
                     style={{
                         background: "none", border: "none", cursor: "pointer",
-                        color: "var(--color-primary)", fontSize: 12,
-                        fontFamily: "JetBrains Mono, monospace",
+                        color: "var(--color-primary)", fontSize: "var(--pro-small, 12px)",
+                        fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
                     }}
                 >
                     ← Back to DAO

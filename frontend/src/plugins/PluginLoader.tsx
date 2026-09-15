@@ -34,13 +34,13 @@ class PluginErrorBoundary extends Component<{ pluginId: string; children: ReactN
                         borderRadius: 10,
                         background: "rgba(255,59,48,0.05)",
                         border: "1px solid rgba(255,59,48,0.15)",
-                        fontFamily: "JetBrains Mono, monospace",
+                        fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
                     }}
                 >
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-danger)", marginBottom: 6 }}>
+                    <div style={{ fontSize: "var(--pro-small, 13px)", fontWeight: 600, color: "var(--color-danger)", marginBottom: 6 }}>
                         ⚠️ Plugin failed to load
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>
+                    <div style={{ fontSize: "var(--pro-caption, 11px)", color: "var(--color-text-secondary)" }}>
                         Plugin &quot;{this.props.pluginId}&quot; encountered an error.
                         {this.state.error?.message && (
                             <span style={{ display: "block", marginTop: 4, color: "var(--color-text-muted)" }}>
@@ -82,8 +82,8 @@ function PluginNotFound({ pluginId }: { pluginId: string }) {
                 borderRadius: 10,
                 background: "rgba(245,166,35,0.05)",
                 border: "1px solid rgba(245,166,35,0.15)",
-                fontFamily: "JetBrains Mono, monospace",
-                fontSize: 12,
+                fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
+                fontSize: "var(--pro-small, 12px)",
                 color: "var(--color-warning)",
             }}
         >

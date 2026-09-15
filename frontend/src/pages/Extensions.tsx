@@ -1,3 +1,4 @@
+import { PRO_APP_ENABLED } from "../lib/config"
 /**
  * Extensions Hub — Dedicated page listing all Memba extensions with status.
  *
@@ -86,20 +87,20 @@ export function Extensions() {
                     <PuzzlePiece size={24} weight="duotone" />
                     Extensions
                 </h2>
-                <p style={{ color: "var(--color-text-secondary)", fontSize: 12, marginTop: 4, fontFamily: "JetBrains Mono, monospace" }}>
+                <p style={{ color: "var(--color-text-secondary)", fontSize: "var(--pro-small, 12px)", marginTop: 4, fontFamily: "var(--font-ui, JetBrains Mono, monospace)" }}>
                     Enhance your DAO with powerful extensions — activate them per-DAO
                 </p>
             </div>
 
             {/* Stats bar */}
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                <div style={{ fontSize: 11, fontFamily: "JetBrains Mono, monospace", color: "var(--color-text-secondary)" }}>
+                <div style={{ fontSize: "var(--pro-caption, 11px)", fontFamily: "var(--font-ui, JetBrains Mono, monospace)", color: "var(--color-text-secondary)" }}>
                     <span style={{ color: "var(--color-primary)", fontWeight: 600 }}>{EXTENSIONS.filter(e => e.status === "active").length}</span> active
                 </div>
-                <div style={{ fontSize: 11, fontFamily: "JetBrains Mono, monospace", color: "var(--color-text-secondary)" }}>
+                <div style={{ fontSize: "var(--pro-caption, 11px)", fontFamily: "var(--font-ui, JetBrains Mono, monospace)", color: "var(--color-text-secondary)" }}>
                     <span style={{ color: "var(--color-warning)", fontWeight: 600 }}>{EXTENSIONS.filter(e => e.status === "coming-soon").length}</span> coming soon
                 </div>
-                <div style={{ fontSize: 11, fontFamily: "JetBrains Mono, monospace", color: "var(--color-text-secondary)" }}>
+                <div style={{ fontSize: "var(--pro-caption, 11px)", fontFamily: "var(--font-ui, JetBrains Mono, monospace)", color: "var(--color-text-secondary)" }}>
                     <span style={{ color: "var(--color-text)", fontWeight: 600 }}>{EXTENSIONS.length}</span> total
                 </div>
             </div>
@@ -123,7 +124,7 @@ export function Extensions() {
                                 gap: 14,
                                 cursor: ext.status === "active" ? "pointer" : "default",
                                 transition: "all 0.2s",
-                                opacity: ext.status === "active" ? 1 : 0.7,
+                                opacity: PRO_APP_ENABLED || ext.status === "active" ? 1 : 0.7,
                             }}
                             onClick={() => handleOpen(ext)}
                             onMouseEnter={e => { if (ext.status === "active") e.currentTarget.style.borderColor = "rgba(0,212,170,0.2)" }}
@@ -140,10 +141,10 @@ export function Extensions() {
                                     {ext.icon}
                                 </div>
                                 <span style={{
-                                    fontSize: 9, padding: "3px 8px", borderRadius: 4,
+                                    fontSize: "var(--pro-caption, 9px)", padding: "3px 8px", borderRadius: 4,
                                     background: ss.bg, color: ss.color,
                                     border: `1px solid ${ss.border}`,
-                                    fontFamily: "JetBrains Mono, monospace",
+                                    fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
                                     fontWeight: 600, letterSpacing: "0.05em",
                                     textTransform: "uppercase",
                                 }}>
@@ -152,14 +153,14 @@ export function Extensions() {
                             </div>
 
                             {/* Name */}
-                            <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text)" }}>
+                            <div style={{ fontSize: "var(--pro-body, 15px)", fontWeight: 600, color: "var(--color-text)" }}>
                                 {ext.name}
                             </div>
 
                             {/* Description */}
                             <div style={{
-                                fontSize: 12, color: "var(--color-text-secondary)", lineHeight: 1.6,
-                                fontFamily: "JetBrains Mono, monospace",
+                                fontSize: "var(--pro-small, 12px)", color: "var(--color-text-secondary)", lineHeight: 1.6,
+                                fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
                                 flex: 1,
                             }}>
                                 {ext.description}
@@ -169,15 +170,15 @@ export function Extensions() {
                             {ext.status === "active" ? (
                                 <button
                                     className="k-btn-primary"
-                                    style={{ fontSize: 11, padding: "8px 16px", alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6 }}
+                                    style={{ fontSize: "var(--pro-caption, 11px)", padding: "8px 16px", alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6 }}
                                     onClick={e => { e.stopPropagation(); handleOpen(ext) }}
                                 >
                                     Open <ArrowRight size={12} />
                                 </button>
                             ) : (
                                 <div style={{
-                                    fontSize: 10, color: "var(--color-text-muted)",
-                                    fontFamily: "JetBrains Mono, monospace",
+                                    fontSize: "var(--pro-caption, 10px)", color: "var(--color-text-muted)",
+                                    fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
                                     fontStyle: "italic",
                                 }}>
                                     Available in a future update
@@ -193,7 +194,7 @@ export function Extensions() {
                 padding: "14px 18px", borderRadius: 10,
                 background: "rgba(255,255,255,0.02)",
                 border: "1px solid rgba(255,255,255,0.04)",
-                fontSize: 11, color: "var(--color-text-muted)",
+                fontSize: "var(--pro-caption, 11px)", color: "var(--color-text-muted)",
                 fontFamily: "JetBrains Mono, monospace",
                 lineHeight: 1.6,
             }}>

@@ -37,6 +37,35 @@ Full changelogs are split by version range for easier navigation:
 - Validate Gno package identifiers during the first wizard step and reject duplicate members during the member step. Empty spare input rows remain optional; valid zero-power and role-less members remain supported.
 - Add generator regressions and browser checks for duplicate-founder correction and invalid package names. Existing deployed DAO behavior and governance policy remain unchanged.
 
+### Professional discovery and upcoming features (#1200, 2026-09-15)
+<!-- categories: memba -->
+- Rename navigation to Dev Report while preserving existing Gnolove URLs.
+- Use a minimalist sun/moon header shortcut while keeping System preference in Settings and mobile More.
+- Fix Dev Report cache restoration after navigating away from unfinished reads: persist only successful queries and invalidate the old serialized-promise format.
+- Replace unavailable feature placeholders with responsive, clearly labelled design previews, including Marketplace, Reputation, publishing, community and game surfaces. Previews cannot mount or activate the gated features.
+- Keep an App Store ecosystem directory available independently of the on-chain registry: Adena, GnoSwap, Boards, Akkadia, GnoScan and Gno Playground. Beta and preview status remain explicit; publishing, moderation and reviews retain their existing guards.
+
+### Professional DAO and proposal preview (2026-09-14)
+<!-- categories: memba -->
+- An independent opt-in governance preview gives DAO overviews a wider layout, direct counts, searchable proposal status filters and keyboard-accessible proposal/member links.
+- Proposal readers gain readable action details and a separate voting summary. Missing counts and thresholds remain explicitly unavailable; network failures offer contextual retries.
+- Existing vote confirmation, membership/archive restrictions and transaction payloads are preserved. The preview excludes creation, treasury, membership management, channels and extension routes, and remains off by default.
+
+### Professional navigation and Folded M preview (2026-09-14)
+<!-- categories: memba -->
+- A separately opt-in shell groups desktop navigation and offers Home, DAOs, Tokens, Directory and More on mobile. Existing routes, wallet-only links and unavailable-feature gates remain intact.
+- The mobile preview menu adds a visible close action, readable controls, keyboard focus containment and reliable focus return on iPhone.
+- The selected Folded M is available as editable vector masters, wordmarks, app icons and a sharing-card proposal. Existing production identity and shared-link metadata remain unchanged.
+
+### Professional Validators preview (2026-09-14)
+<!-- categories: memba -->
+- An opt-in presentation preview gives Validators a wider workspace, readable table, Light / true Black surfaces and expandable mobile network overview. Additional metrics remain available through All columns; existing queries, sorting and detail routes are preserved.
+- Health filtering includes Unknown explicitly; degraded/down explanations are visible beside the status, and failed initial reads offer a contextual retry. Dedicated preview CI covers the stacked branch.
+- The presentation flag is off by default and only applies to network-prefixed Validators overview routes. No contract or network capabilities are enabled.
+
+### Follow device appearance or choose Light / Black (2026-09-14)
+<!-- categories: memba -->
+- Theme controls now offer System, Light and Black in the desktop top bar, mobile More menu and Settings. System follows device appearance changes; explicit choices stay fixed and synchronize across tabs. Existing saved Light/Black choices remain compatible.
 ### Short touch taps reliably start and fire in Space Invaders (2026-09-15)
 <!-- categories: memba -->
 - Completed fire taps are held until a fixed simulation step consumes them, including slow frames and high-refresh frames with no simulation step. Held firing and deterministic daily replay remain unchanged.

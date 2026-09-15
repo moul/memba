@@ -30,3 +30,9 @@ playwright-report/
 
 # A2 login spike (throwaway, not shipped)
 sign-spike.html
+
+# Isolated professional shell browser evidence
+test-results-shell*/
+# Full frontend review artifacts (uploaded by CI; selected images live in docs).
+test-results-complete*/
+test-results-governance/

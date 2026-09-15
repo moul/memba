@@ -17,8 +17,8 @@ import { useNetworkNav } from "../hooks/useNetworkNav"
 import { useState, useEffect } from "react"
 import { GNO_CHAIN_ID, APP_VERSION, selectableNetworksFor } from "../lib/config"
 import { useNetwork } from "../hooks/useNetwork"
-import { Globe, FolderOpen, GasPump, User, Wrench, Gear, SunDim, Moon } from "@phosphor-icons/react"
-import { getTheme, setTheme, type Theme } from "../lib/themeStore"
+import { Globe, FolderOpen, GasPump, User, Wrench, Gear, SunDim } from "@phosphor-icons/react"
+import { ThemeSelect } from "../components/ui/ThemeSelect"
 import { trackEvent } from "../lib/analytics"
 
 const SETTINGS_KEY = "memba_settings"
@@ -73,10 +73,10 @@ function Section({ title, icon, defaultOpen = false, children }: {
                     alignItems: "center",
                 }}
             >
-                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text)" }}>
+                <span style={{ fontSize: "var(--pro-body, 14px)", fontWeight: 600, color: "var(--color-text)" }}>
                     {icon} {title}
                 </span>
-                <span style={{ fontSize: 12, color: "var(--color-text-muted)", transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "rotate(0)" }}>
+                <span style={{ fontSize: "var(--pro-small, 12px)", color: "var(--color-text-muted)", transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "rotate(0)" }}>
                     ▼
                 </span>
             </button>
@@ -105,7 +105,6 @@ export function Settings() {
     // same helpers as the switcher.
     const { networkKey, switchNetwork } = useNetwork()
     const [saved, setSaved] = useState(false)
-    const [theme, setThemeState] = useState<Theme>(getTheme)
 
     useEffect(() => {
         saveSettings(settings)
@@ -134,8 +133,8 @@ export function Settings() {
     }
 
     const labelStyle: React.CSSProperties = {
-        fontSize: 11, color: "var(--color-text-secondary)",
-        fontFamily: "JetBrains Mono, monospace",
+        fontSize: "var(--pro-caption, 11px)", color: "var(--color-text-secondary)",
+        fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
         display: "block", marginBottom: 4,
     }
 
@@ -143,14 +142,14 @@ export function Settings() {
         width: "100%", padding: "8px 12px", borderRadius: 8,
         border: "1px solid var(--color-k-edge)",
         background: "var(--color-k-elevated)", color: "var(--color-text)",
-        fontFamily: "JetBrains Mono, monospace", fontSize: 12,
+        fontFamily: "var(--font-ui, JetBrains Mono, monospace)", fontSize: "var(--pro-small, 12px)",
         boxSizing: "border-box",
     }
 
     const btnStyle: React.CSSProperties = {
         padding: "8px 16px", borderRadius: 8, border: "none",
-        cursor: "pointer", fontFamily: "JetBrains Mono, monospace",
-        fontSize: 12, fontWeight: 600,
+        cursor: "pointer", fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
+        fontSize: "var(--pro-small, 12px)", fontWeight: 600,
     }
 
     return (
@@ -158,7 +157,7 @@ export function Settings() {
             <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--color-text)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}><Gear size={22} /> Settings</h2>
 
             {saved && (
-                <div style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(0,212,170,0.08)", color: "var(--color-primary)", fontSize: 12 }}>
+                <div style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(0,212,170,0.08)", color: "var(--color-primary)", fontSize: "var(--pro-small, 12px)" }}>
                     ✓ Settings saved
                 </div>
             )}
@@ -186,39 +185,22 @@ export function Settings() {
 
             {/* Theme */}
             <Section title="Appearance" icon={<SunDim size={18} />}>
-                <div style={{ display: "flex", gap: 8, paddingTop: 8 }}>
-                    {(["dark", "light"] as Theme[]).map(t => (
-                        <button
-                            key={t}
-                            onClick={() => { setTheme(t); setThemeState(t); setSaved(true) }}
-                            style={{
-                                ...btnStyle,
-                                background: theme === t ? "var(--color-k-accent-tint)" : "var(--color-k-hover-surface)",
-                                color: theme === t ? "var(--color-k-accent)" : "var(--color-k-dim)",
-                                border: `1px solid ${theme === t ? "var(--color-k-accent-border)" : "var(--color-k-edge)"}`,
-                                display: "flex", alignItems: "center", gap: 6,
-                            }}
-                        >
-                            {t === "dark" ? <Moon size={14} /> : <SunDim size={14} />}
-                            {t.charAt(0).toUpperCase() + t.slice(1)}
-                        </button>
-                    ))}
-                </div>
-                <p style={{ fontSize: 10, color: "var(--color-text-secondary)", fontFamily: "JetBrains Mono, monospace", margin: 0 }}>
-                    Tip: click ☀️/🌙 in the top bar, or use ⌘K → "Toggle Theme"
+                <div style={{ paddingTop: 8 }}><ThemeSelect onSelect={() => setSaved(true)} /></div>
+                <p style={{ fontSize: "var(--pro-small, 13px)", color: "var(--color-text-secondary)", margin: 0 }}>
+                    System follows your device appearance. Choose Light or Black to keep a fixed theme.
                 </p>
             </Section>
 
             {/* Directory — moved from main nav */}
             <Section title="Directory" icon={<FolderOpen size={18} />}>
                 <div style={{ paddingTop: 8 }}>
-                    <p style={{ fontSize: 11, color: "var(--color-text-secondary)", fontFamily: "JetBrains Mono, monospace", margin: "0 0 10px", lineHeight: 1.5 }}>
+                    <p style={{ fontSize: "var(--pro-caption, 11px)", color: "var(--color-text-secondary)", fontFamily: "var(--font-ui, JetBrains Mono, monospace)", margin: "0 0 10px", lineHeight: 1.5 }}>
                         Browse on-chain packages, realms, and user profiles deployed on gno.land.
                     </p>
                     <button
                         id="settings-directory-btn"
                         className="k-btn-primary"
-                        style={{ fontSize: 11, padding: "8px 16px" }}
+                        style={{ fontSize: "var(--pro-caption, 11px)", padding: "8px 16px" }}
                         onClick={() => navigate("/directory")}
                     >
                         📂 Open Directory →
@@ -252,7 +234,7 @@ export function Settings() {
 
             {/* Profile */}
             <Section title="Profile" icon={<User size={18} />}>
-                <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: 0, paddingTop: 8 }}>
+                <p style={{ fontSize: "var(--pro-small, 12px)", color: "var(--color-text-secondary)", margin: 0, paddingTop: 8 }}>
                     Edit your profile, connect GitHub, and manage social links.
                 </p>
                 <button
@@ -273,7 +255,7 @@ export function Settings() {
                 >
                     Clear Cache
                 </button>
-                <div style={{ fontSize: 10, color: "var(--color-text-dim)", fontFamily: "JetBrains Mono, monospace" }}>
+                <div style={{ fontSize: "var(--pro-caption, 10px)", color: "var(--color-text-dim)", fontFamily: "var(--font-ui, JetBrains Mono, monospace)" }}>
                     Memba v{APP_VERSION} · Chain: {GNO_CHAIN_ID}
                 </div>
             </Section>
