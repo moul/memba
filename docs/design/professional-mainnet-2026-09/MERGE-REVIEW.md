@@ -1,0 +1,54 @@
+# Consolidated frontend merge review — 2026-09-15
+
+Scope: PR #1200 on `feat/professional-complete`, isolated worktree `Memba-worktrees/professional-complete`. This covers the original design stack and the owner’s final discovery feedback. No production merge, environment activation or real wallet transaction is part of this review.
+
+## Code review
+
+- **Feature boundaries:** the full presentation flag does not change capability flags. Marketplace still derives live lanes from existing flags and realm validity. Every disabled route stays disabled; previews contain only static markup and navigation back home. NFT, game and feed children are not mounted by their gates. The new public App Store directory mounts independently; nested registry routes remain behind AppStoreGate. AppSubmit keeps submission, v3 realm and wallet guards.
+- **Transaction correctness:** an AST comparison of changed frontend files found 18 named vote/execute/submit/create/send/sign/import/connect/save handlers unchanged from current main. No backend, wallet adapters, signing payload builders, fee computation, realm code or network capability policy is changed by this design PR. Existing integration tests cover payloads and guards; synthetic browser fixtures do not broadcast transactions.
+- **Data integrity:** governance status remains authoritative; missing vote totals, thresholds and monitoring remain labelled unavailable. Validator filtering and compact columns do not remove the full column view or detail navigation. Curated ecosystem links are separate from on-chain registry records and carry no fabricated reviews, balances, verification badges or network claims. See [sources](ECOSYSTEM-SOURCES.md).
+- **Brand and sharing:** build-time assets and crawler substitutions are opt-in. Metadata is escaped, query strings are omitted from canonical share URLs, and API/static requests pass through. Post moderation and root selection remain unchanged. Feed cards use the downstream app marker to choose the correct brand.
+- **Theme shortcut:** the owner’s final refinement replaces the header dropdown with a borderless sun/moon icon. Its accessible name states the next theme; keyboard activation and reload persistence are verified. System/Light/Black preferences remain in Settings and the mobile More sheet. The shortcut is hidden in narrow headers to preserve network/wallet space.
+- **Accessibility and navigation:** system theme persistence and OS changes, keyboard navigation, focus containment/return, network-aware links, disclosure controls, labels and contrast are exercised by the dedicated browser suites. Dev Report preserves all existing Gnolove URLs. New preview illustrations have no focusable controls and are visibly labelled illustrative.
+- **Performance:** no new dependency, polling loop, chain query or remote image fetch was added for discovery. The six ecosystem entries are static links. Feature code remains lazy/gated. Build output is checked in both default and full-design modes.
+
+## Parallel sessions and repository state
+
+The initial review found `origin/main` and the untouched shared main checkout at **395230c0**. During final verification, another session merged #1199, advancing `origin/main` to **9500113c**. That commit is now integrated here; the merge was clean and added only its release-note line because the underlying status correction was already present. A later final fetch found #1201 (`e7707b78`), the independently reviewed Space Invaders touch-input correction. It was integrated cleanly as well, preserving its new input-consumption and pause/replay tests. The final combined commit is checked against this current main. All 19 inspected worktrees were clean on the concurrency check. The shared checkout was not modified by this session.
+
+| Branch | Compatibility check | Outcome |
+|---|---|---|
+| Current main | Merge simulation | Clean |
+| `fix/govdao-proposal-status` | Merge simulation | Clean; its read-correctness change is already integrated |
+| `fix/telemetry-breadcrumb-redaction` | Merge simulation | Clean |
+| `chore/remove-gno-sale-announcement` | Merge simulation | A modify/delete conflict was found in the announcement component. The design-only edits to that retiring component were removed from this PR so its deletion can merge cleanly. |
+| `chore/dependabot-train-20260915` | Merge simulation | Clean |
+| `fix/space-invaders-touch-start` | Merge simulation | Clean |
+| `fix/multisig-creation-parity` | Compared merge against both main and design | Existing conflicts in `backend/go.mod` and `frontend/package.json` also occur against main alone. This older branch must be updated by its owner; do not merge its dependency snapshot into the design branch. |
+
+Merge simulations do not alter other worktrees. Re-fetch main and check the current PR head immediately before merging: later independent changes can invalidate a previous clean result.
+
+## Cache restoration correction found by the full route review
+
+The full browser matrix exposed a pre-existing Dev Report persistence bug: the namespace-only dehydration filter included pending queries. JSON serializes their promises to objects, which fail during hydration on the next page load. The correction composes the namespace restriction with the library’s successful-query filter and uses a stable cache buster to discard the incompatible old format before hydration. Existing cached Dev Report reads refetch once; no wallet, account or transaction storage is changed. The unit regression reproduces the old exception and verifies the corrected JSON round trip plus migration. See [TanStack’s cache-busting contract](https://tanstack.com/query/latest/docs/framework/react/plugins/persistQueryClient#cache-busting).
+
+## Existing dependency advisories
+
+GitHub reports six existing advisories against main: gRPC-Go (high, #159), Hono (three medium, #160–162) and Vitest/mocker (two medium, #163–164). This PR leaves `backend/go.mod`, `pnpm-lock.yaml` and the workspace dependency policy unchanged. The high advisory concerns xDS servers; `go list -deps ./...` for the backend contains no `google.golang.org/grpc/xds` package, and the application does not create an xDS server. These alerts remain dependency maintenance work; they are not evidence that this PR introduces a reachable vulnerability. Full repository security clearance is distinct from approval of this frontend diff.
+
+## Validation and review evidence
+
+- Before the last mainline integration and cache correction, the full local unit suite: 5,170 passed, one skipped; default/full-design builds and lint passed.
+- New focused boundary/navigation tests: 65 passed; publisher tests: 19 passed.
+- All three App Store browser boundary tests passed against an isolated pinned-flags server. Two obsolete assertions were updated to keep ecosystem discovery public while registry details, publishing and curation remain gated. Other sessions’ dev servers were left untouched.
+- Final theme refinement: 11 targeted unit tests, four Chromium/Firefox validator checks, two preference/mobile checks and eight refreshed discovery/validator visual cases passed; build and lint passed.
+- New visual checks: four desktop/mobile × Black/Light cases, each visiting Marketplace, Reputation and the six-entry App Store; layout and accessibility passed.
+- [Visual gallery](COMPLETE-REVIEW.md): 62 selected screens; updated discovery illustrations are explicitly labelled.
+- The previous consolidated commit passed both Node versions, all 90 complete-design cases, 115 professional regressions, 230 legacy Chromium cases, backend/Gno/security and deployment checks.
+- **Final commit verification:** use [PR #1200 Checks](https://github.com/samouraiworld/memba/pull/1200/checks). The updated full-route suite contains 61 cases; the feature suite contains 33. Required checks must all pass on the current pushed head before merge. Previous green runs are not sufficient.
+
+## Release boundary
+
+The full professional presentation remains controlled by `VITE_ENABLE_PRO_APP`; deploy previews enable it. The requested navigation wording, ecosystem directory and coming-soon content are shared by default and professional builds. Merging the PR does not itself enable the full production design or deploy missing contracts. Keep the existing capability kill-switches unchanged during any later design activation.
+
+No review can prove the absence of every defect. The merge recommendation is based on the final commit’s tested behaviour, code review, current-main compatibility and explicit release boundaries.

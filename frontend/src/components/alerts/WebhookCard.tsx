@@ -28,15 +28,15 @@ const cardStyle: React.CSSProperties = {
 }
 
 const labelStyle: React.CSSProperties = {
-    fontSize: 10, color: "var(--color-text-muted)",
-    fontFamily: "JetBrains Mono, monospace",
+    fontSize: "var(--pro-caption, 10px)", color: "var(--color-text-muted)",
+    fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
     textTransform: "uppercase" as const,
     letterSpacing: "0.5px",
 }
 
 const urlStyle: React.CSSProperties = {
-    fontSize: 11, color: "var(--color-text)",
-    fontFamily: "JetBrains Mono, monospace",
+    fontSize: "var(--pro-caption, 11px)", color: "var(--color-text)",
+    fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap" as const,
@@ -44,8 +44,8 @@ const urlStyle: React.CSSProperties = {
 
 const btnStyle: React.CSSProperties = {
     padding: "4px 10px", borderRadius: 6, border: "none",
-    cursor: "pointer", fontFamily: "JetBrains Mono, monospace",
-    fontSize: 10, fontWeight: 600,
+    cursor: "pointer", fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
+    fontSize: "var(--pro-caption, 10px)", fontWeight: 600,
 }
 
 function truncateUrl(url: string, max = 45): string {
@@ -67,14 +67,14 @@ export function WebhookCard({ webhook, kind, onEdit, onDelete, deleting }: Props
             {/* Header: type + description */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 16 }}>{typeIcon}</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text)" }}>
+                <span style={{ fontSize: "var(--pro-small, 13px)", fontWeight: 600, color: "var(--color-text)" }}>
                     {webhook.Description || typeLabel}
                 </span>
                 {webhook.ChainID && (
                     <span data-testid="chain-badge" style={{
-                        fontSize: 9, padding: "2px 6px", borderRadius: 4,
+                        fontSize: "var(--pro-caption, 9px)", padding: "2px 6px", borderRadius: 4,
                         background: "rgba(0,212,170,0.08)", color: "var(--color-primary)",
-                        fontFamily: "JetBrains Mono, monospace",
+                        fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
                     }}>
                         {webhook.ChainID}
                     </span>

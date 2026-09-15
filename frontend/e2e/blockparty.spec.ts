@@ -126,7 +126,9 @@ test.describe('Block Party', () => {
 			cells.map((cell) => cell.getAttribute('aria-label')).join('|'))).not.toBe(before)
 		expect(await page.locator('.k-bp-tile').first().evaluate((tile) => getComputedStyle(tile).animationName)).toBe('none')
 
-		await page.getByRole('button', { name: /switch to light theme/i }).click()
+		if (await page.locator('html').getAttribute('data-theme') !== 'light') {
+			await page.getByRole('button', { name: 'Switch to Light theme' }).click()
+		}
 		await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
 	})
 })

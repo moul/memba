@@ -48,12 +48,12 @@ export const DAORooms = memo(function DAORooms({ daoSlug, encodedSlug, isMember,
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 16 }}>🎙️</span>
-                    <span style={{ fontWeight: 600, fontSize: 13, color: "var(--color-text)" }}>Live Rooms</span>
+                    <span style={{ fontWeight: 600, fontSize: "var(--pro-small, 13px)", color: "var(--color-text)" }}>Live Rooms</span>
                     {(isInPublicRoom || isInMembersRoom) && (
                         <span aria-live="polite" style={{
-                            fontSize: 9, padding: "2px 6px", borderRadius: 3,
+                            fontSize: "var(--pro-caption, 9px)", padding: "2px 6px", borderRadius: 3,
                             background: "rgba(0,212,170,0.08)", color: "var(--color-primary)",
-                            fontFamily: "JetBrains Mono, monospace", fontWeight: 600,
+                            fontFamily: "var(--font-ui, JetBrains Mono, monospace)", fontWeight: 600,
                         }}>
                             IN CALL
                         </span>
@@ -64,8 +64,8 @@ export const DAORooms = memo(function DAORooms({ daoSlug, encodedSlug, isMember,
                         aria-label="Manage channels"
                         onClick={() => navigate(`/dao/${encodedSlug}/channels`)}
                         style={{
-                            color: "var(--color-text-muted)", fontSize: 10, background: "none", border: "none",
-                            cursor: "pointer", fontFamily: "JetBrains Mono, monospace",
+                            color: "var(--color-text-muted)", fontSize: "var(--pro-caption, 10px)", background: "none", border: "none",
+                            cursor: "pointer", fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
                             transition: "color 0.15s",
                         }}
                         onMouseEnter={e => e.currentTarget.style.color = "var(--color-brand)"}
