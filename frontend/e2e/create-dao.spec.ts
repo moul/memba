@@ -62,14 +62,13 @@ test.describe('Create DAO Wizard', () => {
     })
 
     test('a saved review draft restores its generated realm code', async ({ page }) => {
-        await page.goto('/dao/create')
-        await page.evaluate(() => localStorage.setItem('memba_dao_draft', JSON.stringify({
+        await page.addInitScript(() => localStorage.setItem('memba_dao_draft', JSON.stringify({
             name: 'Recovery DAO', description: 'Saved review', realmPath: 'gno.land/r/test/recovery',
             members: [{ address: 'g1747t5m2f08plqjlrjk2q0qld7465hxz8gkx59c', power: 1, roles: ['admin'] }],
             threshold: 51, quorum: 0, availableRoles: ['admin', 'member'], proposalCategories: ['governance'],
             selectedPreset: null, step: 5, savedAt: Date.now(), enableChannels: false, channelNames: ['general'],
         })))
-        await page.reload()
+        await page.goto('/dao/create')
         await page.getByRole('button', { name: 'Resume', exact: true }).click()
         await page.getByText(/View Generated Gno Code/).click()
         await expect(page.locator('code').first()).toContainText('package recovery')
@@ -77,9 +76,8 @@ test.describe('Create DAO Wizard', () => {
     })
 
     test('a malformed saved draft does not crash the wizard', async ({ page }) => {
+        await page.addInitScript(() => localStorage.setItem('memba_dao_draft', JSON.stringify({ members: null, savedAt: Date.now() })))
         await page.goto('/dao/create')
-        await page.evaluate(() => localStorage.setItem('memba_dao_draft', JSON.stringify({ members: null, savedAt: Date.now() })))
-        await page.reload()
         await expect(page.getByRole('heading', { name: /Create a DAO/ })).toBeVisible()
         await expect(page.getByRole('button', { name: 'Resume', exact: true })).toHaveCount(0)
         await expect(page.getByPlaceholder('My DAO', { exact: true })).toBeVisible()

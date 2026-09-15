@@ -20,6 +20,11 @@ Full changelogs are split by version range for easier navigation:
 
 ## [Unreleased]
 
+### Archived DAOs reject management changes (2026-09-15)
+
+- Enforce archival in generated realm execution and role-change entrypoints, matching the frontend's read-only state. Hide role-management controls for archived DAOs and when the configuration cannot be read.
+- Add real Gno crossing-call checks and member-page regressions. These realm guards apply to newly generated DAOs; already deployed immutable realms require a separate migration.
+
 ### DAO creation recovery and expired proposal reads (2026-09-15)
 
 - Validate saved drafts before resuming, restore the generated code preview, and preserve a pending draft until Resume or Discard is chosen.

@@ -649,6 +649,7 @@ func VoteOnProposal(cur realm, id int, vote string) {
 }
 
 func ExecuteProposal(cur realm, id int) {
+\tassertNotArchived()
 \tcaller := unsafe.PreviousRealm().Address()
 \tassertMember(caller)
 \tp := getProposal(id)
@@ -826,6 +827,7 @@ func executeAssignRole(data string) {
 // ── Role Management (admin-only) ──────────────────────────
 
 func AssignRole(cur realm, target address, role string) {
+\tassertNotArchived()
 \tcaller := unsafe.PreviousRealm().Address()
 \tassertAdmin(caller)
 \tassertRole(role)
@@ -842,6 +844,7 @@ func AssignRole(cur realm, target address, role string) {
 }
 
 func RemoveRole(cur realm, target address, role string) {
+\tassertNotArchived()
 \tcaller := unsafe.PreviousRealm().Address()
 \tassertAdmin(caller)
 \tif role == "admin" {
@@ -886,7 +889,7 @@ func IsArchived() bool {
 
 func assertNotArchived() {
 \tif archived {
-\t\tpanic("DAO is archived — no new proposals or votes")
+\t\tpanic("DAO is archived — changes are disabled")
 \t}
 }
 
