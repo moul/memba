@@ -1,12 +1,14 @@
-import { inputStyle, ROLE_COLORS, ROLE_ICONS, type MemberInput, type Step } from "./wizardShared"
+import { inputStyle, ROLE_COLORS, ROLE_ICONS, ROLES_ARE_LABELS, SoloPowerWarning, type MemberInput, type Step } from "./wizardShared"
+import { membersWhoCanPassAlone } from "../../lib/daoTemplate"
 
 interface Props {
     members: MemberInput[]
     availableRoles: string[]
     walletAddress: string
     validMembers: MemberInput[]
-    adminCount: number
     totalPower: number
+    threshold: number
+    quorum: number
     onMembersChange: (members: MemberInput[]) => void
     onGoToStep: (s: Step) => void
     onNext: () => void
@@ -14,7 +16,7 @@ interface Props {
 
 export function WizardStepMembers({
     members, availableRoles, walletAddress,
-    validMembers, adminCount, totalPower,
+    validMembers, totalPower, threshold, quorum,
     onMembersChange, onGoToStep, onNext,
 }: Props) {
     const addMember = () => onMembersChange([...members, { address: "", power: 1, roles: ["member"] }])
@@ -27,7 +29,7 @@ export function WizardStepMembers({
     const updateMember = (i: number, field: "address" | "power", value: string) => {
         const next = [...members]
         if (field === "power") {
-            next[i] = { ...next[i], power: Math.max(1, parseInt(value, 10) || 1) }
+            next[i] = { ...next[i], power: Math.min(1_000_000_000, Math.max(1, parseInt(value, 10) || 1)) }
         } else {
             next[i] = { ...next[i], address: value.trim() }
         }
@@ -50,7 +52,7 @@ export function WizardStepMembers({
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                 <h3 style={{ fontSize: "var(--pro-body, 14px)", fontWeight: 600, color: "var(--color-text)" }}>Initial Members & Roles</h3>
                 <span style={{ fontSize: "var(--pro-caption, 11px)", color: "var(--color-text-secondary)", fontFamily: "var(--font-ui, JetBrains Mono, monospace)" }}>
-                    {validMembers.length} member{validMembers.length !== 1 ? "s" : ""} · {adminCount} admin{adminCount !== 1 ? "s" : ""} · power: {totalPower}
+                    {validMembers.length} member{validMembers.length !== 1 ? "s" : ""} · power: {totalPower}
                 </span>
             </div>
 
@@ -69,7 +71,8 @@ export function WizardStepMembers({
                             value={m.power}
                             onChange={(e) => updateMember(i, "power", e.target.value)}
                             min="1"
-                            max="100"
+                            max="1000000000"
+                            aria-label="Voting power"
                             style={{ ...inputStyle, width: 70, textAlign: "center" }}
                         />
                         <span style={{ fontSize: "var(--pro-caption, 9px)", color: "var(--color-text-muted)", fontFamily: "var(--font-ui, JetBrains Mono, monospace)", width: 40 }}>power</span>
@@ -114,9 +117,15 @@ export function WizardStepMembers({
                     onClick={() => onMembersChange([{ address: walletAddress, power: 1, roles: ["admin"] }, ...members])}
                     style={{ fontSize: "var(--pro-caption, 11px)", padding: "6px 12px", alignSelf: "flex-start" }}
                 >
-                    + Add my address (as admin)
+                    + Add my address
                 </button>
             )}
+
+            <p style={{ fontSize: "var(--pro-caption, 11px)", color: "var(--color-text-secondary)", fontFamily: "var(--font-ui, JetBrains Mono, monospace)", margin: 0 }}>
+                {ROLES_ARE_LABELS} Adding or removing members, changing roles and archiving are all decided by vote.
+            </p>
+
+            <SoloPowerWarning addresses={membersWhoCanPassAlone(validMembers, threshold, quorum)} />
 
             <button
                 onClick={addMember}
