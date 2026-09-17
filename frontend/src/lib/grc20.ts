@@ -9,6 +9,8 @@
 
 import { GRC20_FACTORY_PATH as _FACTORY_PATH, MEMBA_TOKEN, GNO_CHAIN_ID, API_BASE_URL } from "./config"
 import { getGasConfig } from "./gasConfig"
+import { getRpcUrlsInOrder } from "./rpcFallback"
+import { abciQueryText } from "./dao/packageStatus"
 import * as Sentry from "@sentry/react"
 
 // ── Platform Fee ──────────────────────────────────────────────
@@ -72,6 +74,8 @@ export function toAdenaMessages(msgs: AminoMsg[]) {
                     pkg_path: m.value.pkg_path as string,
                     func: m.value.func as string,
                     args: m.value.args as string[],
+                    // A storage deposit cap travels with the call when the caller sized one.
+                    ...(typeof m.value.max_deposit === "string" && m.value.max_deposit !== "" ? { max_deposit: m.value.max_deposit } : {}),
                 },
             }
         }
@@ -178,11 +182,65 @@ export function setTxConfirmationCallback(cb: TxConfirmCallback | null) {
  * RESILIENCE: Retries transient network failures (timeout, fetch) up to 2 times
  * with exponential backoff. User-initiated cancellations are never retried.
  */
+/** Hard ceiling for an explicit gasWanted (the chains' block limit is 3B). */
+export const MAX_GAS_WANTED = 500_000_000
+
+/** Network gas price: `ugnot` per `gas` units. */
+export interface GasPrice { gas: number; ugnot: number }
+
+/** Used when `auth/gasprice` cannot be read: the value gnoland-1 and pearl-1 reported on 2026-09-17. */
+export const FALLBACK_GAS_PRICE: GasPrice = { gas: 1000, ugnot: 1 }
+
+const gasPriceCache = new Map<string, GasPrice>()
+
+/** Test hook. */
+export function __resetGasPriceCache() {
+    gasPriceCache.clear()
+}
+
+/**
+ * The chain's current gas price from `auth/gasprice`, cached per chain. Falls
+ * back to {@link FALLBACK_GAS_PRICE} when no endpoint of that chain answers.
+ */
+export async function networkGasPrice(chainId: string = GNO_CHAIN_ID, rpcUrls: string[] = getRpcUrlsInOrder()): Promise<GasPrice> {
+    const cached = gasPriceCache.get(chainId)
+    if (cached) return cached
+    try {
+        const raw = JSON.parse(await abciQueryText({ rpcUrl: rpcUrls[0] ?? "", rpcUrls, chainId }, "auth/gasprice", "")) as { gas?: unknown; price?: unknown }
+        const gas = Number(raw.gas)
+        const match = typeof raw.price === "string" ? /^([0-9]{1,15})ugnot$/.exec(raw.price) : null
+        if (!Number.isSafeInteger(gas) || gas <= 0 || !match) throw new Error("Unexpected gas price")
+        const price = { gas, ugnot: Number(match[1]) }
+        // A zero price would produce a zero fee that the chain refuses.
+        if (price.ugnot <= 0) throw new Error("Gas price out of range")
+        // Refuse a price above ten times the default: a misreporting endpoint
+        // must not be able to inflate fees.
+        if (price.ugnot * FALLBACK_GAS_PRICE.gas > 10 * FALLBACK_GAS_PRICE.ugnot * price.gas) throw new Error("Gas price out of range")
+        gasPriceCache.set(chainId, price)
+        return price
+    } catch {
+        return FALLBACK_GAS_PRICE
+    }
+}
+
+/**
+ * Fee for an explicit, measured gas limit: the network price with 20 %
+ * headroom. The profile's flat fee does not apply. Wallets that simulate may
+ * lower it.
+ */
+export function feeForGasWanted(gasWanted: number, price: GasPrice): number {
+    return Math.ceil((gasWanted * 1.2 * price.ugnot) / price.gas)
+}
+
 export async function doContractBroadcast(
     msgs: AminoMsg[],
     memo: string,
-    opts?: { gas?: "call" | "deploy"; retry?: false; beforeSign?: () => void | Promise<void> },
-): Promise<{ hash: string }> {
+    opts?: { gas?: "call" | "deploy"; gasWanted?: number; retry?: false; beforeSign?: () => void | Promise<void> },
+): Promise<{ hash: string; result?: unknown }> {
+    if (opts?.gasWanted !== undefined && (!Number.isSafeInteger(opts.gasWanted) || opts.gasWanted <= 0 || opts.gasWanted > MAX_GAS_WANTED)) {
+        throw new Error(`Invalid gas limit: must be a whole number between 1 and ${MAX_GAS_WANTED}`)
+    }
+
     // A6: Confirmation gate — ask user before broadcasting
     if (_txConfirmCallback) {
         const confirmed = await _txConfirmCallback(msgs, memo)
@@ -205,7 +263,8 @@ export async function doContractBroadcast(
     // NEVER auto-retry: a lost response after a landed deploy would re-prompt
     // the wallet sign UI just to fail with "package already exists".
     const isDeploy = opts?.gas === "deploy"
-    const gasWanted = isDeploy ? gas.deployWanted : gas.wanted
+    const gasWanted = opts?.gasWanted ?? (isDeploy ? gas.deployWanted : gas.wanted)
+    const gasFee = opts?.gasWanted !== undefined ? feeForGasWanted(opts.gasWanted, await networkGasPrice()) : gas.fee
     const maxRetries = isDeploy || opts?.retry === false ? 0 : 2
     let lastError: Error | null = null
 
@@ -216,7 +275,7 @@ export async function doContractBroadcast(
         try {
             const res = await adena.DoContract({
                 messages: toAdenaMessages(msgs),
-                gasFee: gas.fee,
+                gasFee,
                 gasWanted,
                 memo,
             })
@@ -233,7 +292,8 @@ export async function doContractBroadcast(
                 }
                 lastError = new Error(errMsg)
             } else {
-                return { hash: res.data?.hash || "" }
+                // `result` is the wallet's broadcast result (e.g. the call's return data).
+                return { hash: res.data?.hash || "", result: res.data }
             }
         } catch (err) {
             const msg = err instanceof Error ? err.message : String(err)

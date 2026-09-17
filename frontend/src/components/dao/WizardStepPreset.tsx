@@ -1,20 +1,19 @@
 /**
  * WizardStepPreset — Step 1 of the DAO creation wizard.
  *
- * Lets the user choose a DAO preset (Community, Team, Treasury, Enterprise),
+ * Lets the user choose a DAO preset (Basic, Team, Enterprise),
  * set name/description, and auto-generate a realm path.
  */
 import { useEffect, useRef } from "react"
 import { DAO_PRESETS, validateRealmPath, type DAOPreset } from "../../lib/daoTemplate"
-import { FormField, inputStyle, ROLE_COLORS, ROLE_ICONS } from "./wizardShared"
-import { House, UsersThree, Vault, Buildings } from "@phosphor-icons/react"
+import { FormField, inputStyle, ROLE_COLORS, ROLES_ARE_LABELS } from "./wizardShared"
+import { House, UsersThree, Buildings } from "@phosphor-icons/react"
 import type { ReactNode } from "react"
 
 /** Map emoji icon strings from DAO_PRESETS to Phosphor components */
 const PRESET_ICONS: Record<string, ReactNode> = {
     "🏠": <House size={22} />,
     "👥": <UsersThree size={22} />,
-    "💰": <Vault size={22} />,
     "🏢": <Buildings size={22} />,
 }
 
@@ -58,11 +57,14 @@ export function WizardStepPreset({
 
             {/* Preset Cards */}
             <div className="k-card" style={{ padding: 20 }}>
-                <h3 style={{ fontSize: "var(--pro-small, 13px)", fontWeight: 600, color: "var(--color-text)", marginBottom: 12 }}>DAO Type</h3>
+                <h3 style={{ fontSize: "var(--pro-small, 13px)", fontWeight: 600, color: "var(--color-text)", marginBottom: 4 }}>DAO Type</h3>
+                <p style={{ fontSize: "var(--pro-caption, 11px)", color: "var(--color-text-secondary)", fontFamily: "var(--font-ui, JetBrains Mono, monospace)", margin: "0 0 12px" }}>{ROLES_ARE_LABELS}</p>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
                     {DAO_PRESETS.map((preset) => (
                         <button
                             key={preset.id}
+                            type="button"
+                            aria-pressed={selectedPreset === preset.id}
                             onClick={() => onApplyPreset(preset)}
                             style={{
                                 background: selectedPreset === preset.id ? "rgba(0,212,170,0.08)" : "rgba(255,255,255,0.02)",
@@ -86,7 +88,7 @@ export function WizardStepPreset({
                                         color: ROLE_COLORS[r] || "var(--color-text-secondary)",
                                         fontFamily: "var(--font-ui, JetBrains Mono, monospace)",
                                     }}>
-                                        {ROLE_ICONS[r] || "•"} {r}
+                                        {r}
                                     </span>
                                 ))}
                             </div>
@@ -97,7 +99,7 @@ export function WizardStepPreset({
 
             {/* Name & Path */}
             <div className="k-card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
-                <FormField label="DAO Name" hint="Display name for your DAO">
+                <FormField label="DAO Name" hint="Display name for your DAO" htmlFor="dao-name-input">
                     <input
                         id="dao-name-input"
                         type="text"
@@ -105,22 +107,22 @@ export function WizardStepPreset({
                         onChange={(e) => onNameChange(e.target.value)}
                         placeholder="My DAO"
                         style={inputStyle}
-                        maxLength={50}
+                        maxLength={64}
                     />
                 </FormField>
 
-                <FormField label="Description" hint="Short description (optional)">
+                <FormField label="Description" hint="Short description (optional)" htmlFor="dao-desc-input">
                     <textarea
                         id="dao-desc-input"
                         value={description}
                         onChange={(e) => onDescriptionChange(e.target.value)}
                         placeholder="A governance DAO for..."
                         style={{ ...inputStyle, minHeight: 60, resize: "vertical" }}
-                        maxLength={200}
+                        maxLength={1000}
                     />
                 </FormField>
 
-                <FormField label="Realm Path" hint="On-chain path (e.g., gno.land/r/username/mydao)">
+                <FormField htmlFor="dao-path-input" label="Realm Path" hint="Permanent on-chain path under your own address or a name you registered (e.g., gno.land/r/g1…/mydao). It cannot be changed or reused.">
                     <div style={{ display: "flex", gap: 8 }}>
                         <input
                             id="dao-path-input"

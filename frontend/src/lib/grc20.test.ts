@@ -27,6 +27,10 @@ import {
     FEE_RECIPIENT,
     GRC20_FACTORY_PATH,
     doContractBroadcast,
+    feeForGasWanted,
+    networkGasPrice,
+    __resetGasPriceCache,
+    MAX_GAS_WANTED,
     setWalletRpcContext,
     setTxConfirmationCallback,
     assertWalletBroadcastSafe,
@@ -384,6 +388,13 @@ describe('toAdenaMessages', () => {
         expect(adena[0].value.send).toBe('')
     })
 
+    it('forwards a storage deposit cap on a call, and adds no key when there is none', () => {
+        const call = { type: 'vm/MsgCall', value: { caller: 'g1x', send: '', pkg_path: 'gno.land/r/a/b', func: 'Vote', args: ['1', 'YES'], max_deposit: '400000ugnot' } }
+        expect(toAdenaMessages([call])[0].value).toEqual({ caller: 'g1x', send: '', pkg_path: 'gno.land/r/a/b', func: 'Vote', args: ['1', 'YES'], max_deposit: '400000ugnot' })
+        const plain = buildTransferMsg('g1x', 'FOO', 'g1y', '1')
+        expect(toAdenaMessages([plain])[0].value).not.toHaveProperty('max_deposit')
+    })
+
     it('passes /vm.m_addpkg through unchanged (W2.1)', () => {
         const addPkgMsg = { type: '/vm.m_addpkg', value: { creator: 'g1x', package: {} } }
         expect(toAdenaMessages([addPkgMsg])).toEqual([addPkgMsg])
@@ -472,6 +483,29 @@ describe('doContractBroadcast — deploys never auto-retry (review finding #1)',
     })
 })
 
+describe('doContractBroadcast — broadcast result', () => {
+    it('returns the wallet result beside the hash, so callers can read return data', async () => {
+        setTxConfirmationCallback(() => Promise.resolve(true))
+        setWalletRpcContext('https://rpc.sapphire.testnets.gno.land:443', true, GNO_CHAIN_ID)
+        const data = { hash: 'h', deliver_tx: { ResponseBase: { Data: btoa('(3 uint64)') } } }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(window as any).adena = { DoContract: vi.fn().mockResolvedValue({ status: 'success', data }) }
+        const call = { type: 'vm/MsgCall', value: { caller: 'g1x', send: '', pkg_path: 'gno.land/r/x/y', func: 'F', args: [] } }
+        expect(await doContractBroadcast([call], 'm')).toEqual({ hash: 'h', result: data })
+    })
+
+    it('does not re-send a call marked retry: false after a transient failure', async () => {
+        setTxConfirmationCallback(() => Promise.resolve(true))
+        setWalletRpcContext('https://rpc.sapphire.testnets.gno.land:443', true, GNO_CHAIN_ID)
+        const doContract = vi.fn().mockResolvedValue({ status: 'failure', message: 'network timeout' })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(window as any).adena = { DoContract: doContract }
+        const call = { type: 'vm/MsgCall', value: { caller: 'g1x', send: '', pkg_path: 'gno.land/r/x/y', func: 'ProposeText', args: [] } }
+        await expect(doContractBroadcast([call], 'm', { retry: false })).rejects.toThrow(/network timeout/)
+        expect(doContract).toHaveBeenCalledTimes(1)
+    })
+})
+
 describe('doContractBroadcast — deploy gas budget (W2.1)', () => {
     it('uses the elevated deploy budget for { gas: "deploy" } and the normal one otherwise', async () => {
         setTxConfirmationCallback(() => Promise.resolve(true))
@@ -490,6 +524,99 @@ describe('doContractBroadcast — deploy gas budget (W2.1)', () => {
         expect(calls).toHaveLength(2)
         // deployWanted is strictly larger than the normal budget (5x default).
         expect(calls[0].gasWanted).toBeGreaterThan(calls[1].gasWanted)
+    })
+})
+
+describe('doContractBroadcast — explicit gasWanted', () => {
+    function capture() {
+        setTxConfirmationCallback(() => Promise.resolve(true))
+        setWalletRpcContext('https://rpc.sapphire.testnets.gno.land:443', true, GNO_CHAIN_ID)
+        const calls: Array<{ gasWanted: number; gasFee: number }> = []
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(window as any).adena = {
+            DoContract: (arg: { gasWanted: number; gasFee: number }) => {
+                calls.push(arg)
+                return Promise.resolve({ status: 'success', data: { hash: 'h' } })
+            },
+        }
+        return calls
+    }
+    /** A node answering status and auth/gasprice with the given price. */
+    function stubGasPrice(price: string, network = GNO_CHAIN_ID) {
+        const fetchSpy = vi.fn(async (input: string) => {
+            const url = new URL(input)
+            const result = url.pathname === '/status'
+                ? { node_info: { network } }
+                : { response: { ResponseBase: { Data: btoa(JSON.stringify({ gas: '1000', price })), Error: null } } }
+            return new Response(JSON.stringify({ result }), { status: 200 })
+        })
+        vi.stubGlobal('fetch', fetchSpy)
+        return fetchSpy
+    }
+    const addPkgMsg = { type: '/vm.m_addpkg', value: { creator: 'g1x', package: {} } }
+
+    beforeEach(() => {
+        __resetGasPriceCache()
+        localStorage.clear()
+    })
+
+    it('prices an explicit gas limit at the network rate with 20 % headroom and no profile floor', () => {
+        const price = { gas: 1000, ugnot: 1 }
+        // a small DAO deploy (57M gas): 0.0684 GNOT
+        const small = feeForGasWanted(57_000_000, price)
+        expect(small).toBe(68_400)
+        expect(small).toBeGreaterThanOrEqual(57_000)
+        expect(small).toBeLessThanOrEqual(100_000)
+        expect(feeForGasWanted(334_000_000, price)).toBe(400_800)
+        expect(feeForGasWanted(48_000_000, { gas: 1000, ugnot: 10 })).toBe(576_000)
+    })
+
+    it('ignores a reported price above ten times the default and uses the default', async () => {
+        stubGasPrice('11ugnot')
+        expect(await networkGasPrice(GNO_CHAIN_ID, ['https://rpc.one.invalid'])).toEqual({ gas: 1000, ugnot: 1 })
+        __resetGasPriceCache()
+        stubGasPrice('10ugnot')
+        expect(await networkGasPrice(GNO_CHAIN_ID, ['https://rpc.one.invalid'])).toEqual({ gas: 1000, ugnot: 10 })
+    })
+
+    it('ignores a reported zero price and uses the default', async () => {
+        stubGasPrice('0ugnot')
+        expect(await networkGasPrice(GNO_CHAIN_ID, ['https://rpc.one.invalid'])).toEqual({ gas: 1000, ugnot: 1 })
+    })
+
+    it('reads the network gas price live and caches it per chain', async () => {
+        const fetchSpy = stubGasPrice('3ugnot')
+        expect(await networkGasPrice(GNO_CHAIN_ID, ['https://rpc.one.invalid'])).toEqual({ gas: 1000, ugnot: 3 })
+        expect(await networkGasPrice(GNO_CHAIN_ID, ['https://rpc.one.invalid'])).toEqual({ gas: 1000, ugnot: 3 })
+        expect(fetchSpy.mock.calls.filter(([u]) => String(u).includes('abci_query'))).toHaveLength(1)
+    })
+
+    it('falls back to 1 ugnot per 1000 gas when the price cannot be read or the node is on another chain', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+        expect(await networkGasPrice(GNO_CHAIN_ID, ['https://rpc.one.invalid'])).toEqual({ gas: 1000, ugnot: 1 })
+        __resetGasPriceCache()
+        stubGasPrice('9ugnot', 'another-chain')
+        expect(await networkGasPrice(GNO_CHAIN_ID, ['https://rpc.one.invalid'])).toEqual({ gas: 1000, ugnot: 1 })
+    })
+
+    it('sends the gas limit and the live-priced fee to the wallet, whatever the profile fee', async () => {
+        stubGasPrice('2ugnot')
+        const calls = capture()
+        await doContractBroadcast([addPkgMsg], 'big', { gas: 'deploy', gasWanted: 200_000_000 })
+        expect(calls[0]).toMatchObject({ gasWanted: 200_000_000, gasFee: 480_000 })
+        localStorage.setItem('memba_settings', JSON.stringify({ gasFee: 5_000_000, gasWanted: 10_000_000 }))
+        await doContractBroadcast([addPkgMsg], 'high profile fee', { gas: 'deploy', gasWanted: 57_000_000 })
+        expect(calls[1]).toMatchObject({ gasWanted: 57_000_000, gasFee: 136_800 })
+        // without an explicit limit the profile applies unchanged
+        await doContractBroadcast([addPkgMsg], 'profile', { gas: 'deploy' })
+        expect(calls[2]).toMatchObject({ gasWanted: 50_000_000, gasFee: 5_000_000 })
+    })
+
+    it.each([0, -1, 1.5, Number.NaN, MAX_GAS_WANTED + 1])('refuses gasWanted %s before asking for confirmation', async (gasWanted) => {
+        const confirm = vi.fn(() => Promise.resolve(true))
+        setTxConfirmationCallback(confirm)
+        await expect(doContractBroadcast([addPkgMsg], 'm', { gas: 'deploy', gasWanted })).rejects.toThrow(/gas/i)
+        expect(confirm).not.toHaveBeenCalled()
     })
 })
 

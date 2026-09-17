@@ -67,6 +67,7 @@ function parseSingleMsg(msg: Record<string, unknown>, truncate: (addr: string) =
         const func = (value.func as string) || "—"
         const args = (value.args as string[]) || []
         const send = parseCoins(value.send)
+        const cap = value.max_deposit == null || value.max_deposit === "" ? null : parseCoins(value.max_deposit)
         return {
             type: "Contract Call",
             label: `Call ${func}`,
@@ -75,20 +76,21 @@ function parseSingleMsg(msg: Record<string, unknown>, truncate: (addr: string) =
                 { key: "Function", value: func, accent: true },
                 ...(args.length > 0 ? [{ key: "Arguments", value: args.join(", ") }] : []),
                 ...(send && send !== "—" ? [{ key: "Send", value: send, accent: true }] : []),
+                ...(cap !== null ? [{ key: "Storage deposit cap", value: cap, accent: true }] : []),
             ],
         }
     }
 
     // ── vm/MsgAddPackage ──────────────────────────────────────
-    if (type.includes("MsgAddPackage") || type.includes("vm/m_addpkg")) {
-        const pkg = (value.package as Record<string, unknown>)
-        const path = pkg?.path as string || (value.pkg_path as string) || "—"
-        const deposit = parseCoins(value.deposit)
+    if (isAddPackage(type)) {
+        const { path, depositCap } = readDeploy(value)
+        const deposit = depositCap === null ? parseCoins(value.deposit) : "—"
         return {
             type: "Deploy Package",
-            label: `Deploy ${path.split("/").pop() || path}`,
+            label: `Deploy realm ${path}`,
             fields: [
                 { key: "Path", value: path },
+                ...(depositCap !== null ? [{ key: "Storage deposit cap", value: depositCap, accent: true }] : []),
                 ...(deposit && deposit !== "—" ? [{ key: "Deposit", value: deposit, accent: true }] : []),
             ],
         }
@@ -99,6 +101,40 @@ function parseSingleMsg(msg: Record<string, unknown>, truncate: (addr: string) =
         type: type.split("/").pop() || type,
         label: type,
         fields: [{ key: "Raw", value: JSON.stringify(value, null, 2) }],
+    }
+}
+
+/** Deploy message types: `/vm.m_addpkg` (sent by the app), `vm/m_addpkg`, `vm/MsgAddPackage`. */
+function isAddPackage(type: string): boolean {
+    return type.includes("MsgAddPackage") || /(^|[/.])m_addpkg$/.test(type)
+}
+
+function readDeploy(value: Record<string, unknown>): { path: string; depositCap: string | null } {
+    const pkg = value.package as Record<string, unknown> | undefined
+    const path = (pkg?.path as string) || (value.pkg_path as string) || "—"
+    const cap = value.max_deposit
+    return { path, depositCap: cap == null || cap === "" ? null : parseCoins(cap) }
+}
+
+/** Path and storage deposit cap of a realm deploy message, or null for any other message. */
+export function deployEffect(msg: { type?: unknown; value?: unknown }): { path: string; depositCap: string | null } | null {
+    if (typeof msg.type !== "string" || !isAddPackage(msg.type)) return null
+    try {
+        return readDeploy((msg.value as Record<string, unknown>) ?? {})
+    } catch {
+        return { path: "—", depositCap: null }
+    }
+}
+
+/** Storage deposit cap of a contract call ("1.61 GNOT"), or null when the call sets none or it cannot be read. */
+export function callDepositCap(msg: { type?: unknown; value?: unknown }): string | null {
+    if (typeof msg.type !== "string" || !(msg.type.includes("MsgCall") || msg.type.includes("m_call"))) return null
+    const cap = (msg.value as Record<string, unknown> | undefined)?.max_deposit
+    if (cap == null || cap === "") return null
+    try {
+        return parseCoins(cap)
+    } catch {
+        return "unreadable"
     }
 }
 
