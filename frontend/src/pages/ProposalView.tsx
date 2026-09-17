@@ -28,9 +28,21 @@ import { TierVoteBlock } from "../components/proposal"
 import { ProProposalVotes } from "../components/dao/ProProposalVotes"
 import { VotingInsights } from "../components/dao/TierPieChart"
 import type { LayoutContext } from "../types/layout"
+import { V2ProposalView } from "../components/proposal/V2ProposalView"
 import "./proposalview.css"
 
 export function ProposalView() {
+    const { realmPath, encodedSlug, proposalId } = useDaoRoute()
+    const { kind, loading } = useDaoKind(realmPath)
+    if (loading) {
+        return <div className="animate-fade-in proposal-skeleton-col"><SkeletonCard /><SkeletonCard /></div>
+    }
+    // Version-2 DAOs: JSON reads only, with their own lifecycle.
+    if (kind === "memba-v2") return <V2ProposalView realmPath={realmPath} encodedSlug={encodedSlug} proposalId={Number(proposalId)} />
+    return <LegacyProposalView />
+}
+
+function LegacyProposalView() {
     const professional = isProGovernanceRoute(useLocation().pathname)
     const { realmPath, encodedSlug, proposalId: routeProposalId } = useDaoRoute()
     const id = routeProposalId
@@ -291,7 +303,7 @@ export function ProposalView() {
                     </span>
                     {proposal.status === "passed" && (
                         <span className="proposal-awaiting-hint">
-                            ⚡ Awaiting execution
+                            Awaiting execution
                         </span>
                     )}
                     {isLive && (
@@ -402,7 +414,7 @@ export function ProposalView() {
             {!proposal.actionUnverified && (proposal.actionType || proposal.actionBody || proposal.executorRealm) && (
                 <div className="k-card proposal-action-card">
                     <h3 className="proposal-action-title">
-                        📦 Proposal Action
+                        Proposal action
                         {proposal.actionType && (
                             <span className="proposal-action-type-badge">
                                 {proposal.actionType}
@@ -461,7 +473,7 @@ export function ProposalView() {
             <div aria-live="polite">
             {success && (
                 <div className="proposal-success-msg">
-                    ✓ {success}
+                    {success}
                 </div>
             )}
             </div>
@@ -479,7 +491,7 @@ export function ProposalView() {
                             )}
                             {hasVoted ? (
                                 <div className={`proposal-voted-indicator proposal-voted-indicator--${userVote.toLowerCase()}`}>
-                                    ✓ You voted {userVote} on this proposal
+                                    You voted {userVote} on this proposal
                                 </div>
                             ) : (
                                 <>
@@ -502,13 +514,13 @@ export function ProposalView() {
                                 )}
                                 <div className="proposal-vote-btns">
                                     <button className="k-btn-primary" onClick={() => confirmVote("YES")} disabled={actionLoading || isMember === false || !!pendingVote} aria-label="Vote Yes on this proposal" style={{ flex: 1, minWidth: 120, background: "var(--color-k-accent)", opacity: actionLoading || isMember === false ? 0.5 : 1 }}>
-                                        {actionLoading ? "..." : "✓ Vote Yes"}
+                                        {actionLoading ? "..." : "Vote yes"}
                                     </button>
                                     <button className="k-btn-primary" onClick={() => confirmVote("NO")} disabled={actionLoading || isMember === false || !!pendingVote} aria-label="Vote No on this proposal" style={{ flex: 1, minWidth: 120, background: "var(--color-k-danger)", opacity: actionLoading || isMember === false ? 0.5 : 1 }}>
-                                        {actionLoading ? "..." : "✗ Vote No"}
+                                        {actionLoading ? "..." : "Vote no"}
                                     </button>
                                     <button className="k-btn-secondary" onClick={() => confirmVote("ABSTAIN")} disabled={actionLoading || isMember === false || !!pendingVote} aria-label="Abstain from voting on this proposal" style={{ flex: 1, minWidth: 120, opacity: actionLoading || isMember === false ? 0.5 : 1 }}>
-                                        {actionLoading ? "..." : "○ Abstain"}
+                                        {actionLoading ? "..." : "Abstain"}
                                     </button>
                                 </div>
                                 </>
@@ -518,7 +530,7 @@ export function ProposalView() {
 
                     {proposal.status === "passed" && isMember && capabilities.execute && (
                         <button className="k-btn-primary" onClick={handleExecute} disabled={actionLoading} aria-label={`Execute proposal ${proposalId}`} style={{ width: "100%", background: "var(--color-k-accent)", opacity: actionLoading ? 0.5 : 1 }}>
-                            {actionLoading ? "Executing..." : "⚡ Execute Proposal"}
+                            {actionLoading ? "Executing..." : "Execute proposal"}
                         </button>
                     )}
 
