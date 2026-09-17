@@ -1,42 +1,28 @@
 import { useState, useEffect } from "react"
 import { useOutletContext } from "react-router-dom"
 import { useNetworkNav } from "../hooks/useNetworkNav"
-import { NotePencil, UsersThree, Vault, GearSix, Archive, FileText } from "@phosphor-icons/react"
+import { NotePencil, UsersThree, GearSix, Archive, FileText } from "@phosphor-icons/react"
 import { ErrorToast } from "../components/ui/ErrorToast"
-import { buildProposeMsg, buildProposeAddMemberMsg, getDAOConfig, isGovDAO as checkIsGovDAO } from "../lib/dao"
+import { buildDaoMsg, getDAOConfig, isGovDAOPath, type DaoAction } from "../lib/dao"
 import { doContractBroadcast } from "../lib/grc20"
 import { GNO_RPC_URL } from "../lib/config"
 import { useDaoRoute } from "../hooks/useDaoRoute"
+import { useDaoKind } from "../hooks/useDaoKind"
 import type { LayoutContext } from "../types/layout"
 import "./proposedao.css"
 
 // ── Proposal Templates ───────────────────────────────────────
 
-type ProposalTemplate = "none" | "treasury" | "add-member" | "general"
+type ProposalTemplate = "none" | "add-member" | "general"
 
 const PROPOSAL_TEMPLATES: { id: ProposalTemplate; label: string; icon: typeof FileText }[] = [
     { id: "none", label: "Blank", icon: FileText },
-    { id: "treasury", label: "Treasury Transfer", icon: Vault },
     { id: "add-member", label: "Membership", icon: UsersThree },
     { id: "general", label: "General Governance", icon: GearSix },
 ]
 
 function applyTemplate(template: ProposalTemplate): { title: string; description: string } {
     switch (template) {
-        case "treasury":
-            return {
-                title: "Treasury Transfer Request",
-                description: [
-                    "## Treasury Transfer Request",
-                    "",
-                    "**Recipient Address:** g1...",
-                    "**Amount:** ___ GNOT",
-                    "",
-                    "### Justification",
-                    "",
-                    "_Explain why this transfer is needed and how the funds will be used._",
-                ].join("\n"),
-            }
         case "add-member":
             return {
                 title: "Membership Proposal",
@@ -90,7 +76,8 @@ export function ProposeDAO() {
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
     const [isArchived, setIsArchived] = useState(false)
-    const isGovDAO = checkIsGovDAO(realmPath)
+    const isGovDAO = isGovDAOPath(realmPath)
+    const { kind: daoKind } = useDaoKind(realmPath)
 
     const categories = [
         { value: "governance", label: "Governance" },
@@ -147,14 +134,12 @@ export function ProposeDAO() {
         setSuccess(null)
 
         try {
-            let msg
-            if (proposalType === "member") {
-                // Use executable ProposeAddMember — creates governance proposal with embedded action
-                const trimAddr = memberAddress.trim()
-                msg = buildProposeAddMemberMsg(adena.address, realmPath, trimAddr, memberPower, memberRoles.join(","))
-            } else {
-                msg = buildProposeMsg(adena.address, realmPath, finalTitle, finalDesc, finalCategory)
-            }
+            if (!daoKind) throw new Error("This DAO contract could not be identified yet")
+            const action: DaoAction = proposalType === "member"
+                // Executable add-member proposal with the membership change embedded
+                ? { type: "propose-add-member", title: finalTitle, description: finalDesc, target: memberAddress.trim(), power: memberPower, roles: memberRoles }
+                : { type: "propose-text", title: finalTitle, description: finalDesc, category: finalCategory ?? "governance" }
+            const msg = buildDaoMsg(daoKind, realmPath, action, adena.address)
             await doContractBroadcast([msg], `Propose: ${finalTitle}`)
             setSuccess("Proposal created!")
         } catch (err) {
@@ -249,7 +234,6 @@ export function ProposeDAO() {
                         {[
                             { id: "text" as const, label: "Text / Sentiment", icon: NotePencil, enabled: true },
                             { id: "member" as const, label: "Add Member", icon: UsersThree, enabled: true },
-                            { id: "spend" as const, label: "Treasury Spend", icon: Vault, enabled: false, hint: "Use Treasury → New Proposal" },
                             { id: "upgrade" as const, label: "Code Upgrade", icon: GearSix, enabled: false, hint: "Coming in v2.x" },
                         ].map(t => (
                             <button
@@ -371,10 +355,14 @@ export function ProposeDAO() {
                         📋 View Source Code (MsgCall)
                     </summary>
                     <pre className="pdao-source-pre">
-                        {JSON.stringify(
-                            buildProposeMsg(adena.address || "", realmPath, title.trim(), description.trim(), isGovDAO ? undefined : category),
-                            null, 2,
-                        )}
+                        {(() => {
+                            try {
+                                if (!daoKind) return "Identifying the DAO contract…"
+                                return JSON.stringify(buildDaoMsg(daoKind, realmPath, { type: "propose-text", title: title.trim(), description: description.trim(), category }, adena.address || ""), null, 2)
+                            } catch (err) {
+                                return err instanceof Error ? err.message : "This DAO does not accept proposals from Memba"
+                            }
+                        })()}
                     </pre>
                 </details>
             )}

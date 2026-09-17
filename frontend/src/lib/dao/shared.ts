@@ -8,8 +8,10 @@
  */
 
 import type { AminoMsg } from "../grc20"
-import { getUserRegistryPath, networkScopedKey } from "../config"
+import { GNO_CHAIN_ID, getUserRegistryPath, networkScopedKey } from "../config"
 import { resilientAbciQuery } from "../rpcFallback"
+import { isValidGnoAddressChecksum } from "./address"
+import { assertActiveRpcChain } from "./chainIdentity"
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -41,6 +43,9 @@ export interface DAOProposal {
     actionType?: string        // basedao Action.Type(), GovDAO executor type
     actionBody?: string        // basedao Action.String(), GovDAO ExecutorString()
     executorRealm?: string     // GovDAO ExecutorCreationRealm()
+    // Set when the render carries more than one action/status block (user text
+    // formatted like the realm-generated one), so no action card can be trusted.
+    actionUnverified?: boolean
     // v3.2: Temporal metadata for date display
     createdAtBlock?: number    // Block height at proposal creation (if extractable)
     createdAt?: string         // Wall-clock timestamp ISO string (from tx-indexer, if available)
@@ -264,13 +269,13 @@ export function sanitize(str: string): string {
  *  The rpcUrl parameter is kept for API compatibility but the resilient layer
  *  handles failover to backup endpoints automatically. */
 async function abciQuery(_rpcUrl: string, path: string, data: string, strict = false): Promise<string | null> {
+    // Strict reads are the ones whose answers the UI trusts; they first verify
+    // that the RPC endpoints serve the configured chain.
+    if (strict) await assertActiveRpcChain()
     return resilientAbciQuery(path, data, strict)
 }
 
 // ── Username Resolution ───────────────────────────────────────
-
-/** User registry realm path on gno.land. */
-const USER_REGISTRY = getUserRegistryPath()
 
 /** Username cache key in localStorage (W2.2: network-scoped — usernames are
  *  resolved from the ACTIVE chain's r/sys/users; a test12 resolution must not
@@ -304,20 +309,44 @@ function writeUsernameCache(cache: UsernameCache): void {
 }
 
 /**
- * Resolve a single g1 address to @username via gno.land user registry.
- * Queries Render(address) which returns: "# User - `username`"
- * Returns "@username" or empty string if not registered.
+ * Parse `r/sys/users.ResolveAddress(address)` qeval output.
+ * Returns the username, "" when the address has no (or a deleted)
+ * registration, or null when the output is not the expected literal.
  */
-async function resolveUsername(rpcUrl: string, address: string): Promise<string> {
+export function parseResolveAddressResult(raw: string, address: string): string | null {
+    if (/^\(nil \*gno\.land\/r\/sys\/users\.UserData\)$/.test(raw.trim())) return ""
+    const m = raw.trim().match(/^\(&\(struct\{\("(g1[a-z0-9]{38})" \.uverse\.address\),\("([A-Za-z0-9_.-]{1,64})" string\),\((true|false) bool\)\} gno\.land\/r\/sys\/users\.UserData\) \*gno\.land\/r\/sys\/users\.UserData\)$/)
+    if (!m) return null
+    if (m[1] !== address) return ""
+    return m[3] === "true" ? "" : m[2]
+}
+
+/** Session cache of definitive username answers, keyed by chain and address. */
+const registeredUsernames = new Map<string, string>()
+
+/** Test hook. */
+export function clearRegisteredUsernameCache(): void {
+    registeredUsernames.clear()
+}
+
+/**
+ * Resolve a g1 address to "@username" through the user registry's
+ * `ResolveAddress` (structured qeval; the registry's Render is its home page).
+ * Returns "" when unregistered, invalid, or unreadable; failed reads are not
+ * cached.
+ */
+export async function resolveRegisteredUsername(address: string): Promise<string> {
+    if (!isValidGnoAddressChecksum(address)) return ""
+    const key = `${GNO_CHAIN_ID}:${address}`
+    const cached = registeredUsernames.get(key)
+    if (cached !== undefined) return cached
     try {
-        const data = await queryRender(rpcUrl, USER_REGISTRY, address)
-        if (!data) return ""
-        // Primary format (r/gnoland/users/v1): "# User - `username`"
-        // Secondary format (r/sys/users): may differ — try fallback patterns
-        const m = data.match(/# User - `([^`]+)`/)
-            || data.match(/\*\s+\[([^\]]+)\]\(/)           // " * [username](link)" list format
-            || data.match(/username:\s*([a-zA-Z0-9_]+)/)   // structured fallback
-        return m ? `@${m[1]}` : ""
+        const raw = await resilientAbciQuery("vm/qeval", `${getUserRegistryPath()}.ResolveAddress(address("${address}"))`, true)
+        const name = raw === null ? null : parseResolveAddressResult(raw, address)
+        if (name === null) return ""
+        const handle = name ? `@${name}` : ""
+        registeredUsernames.set(key, handle)
+        return handle
     } catch {
         return ""
     }
@@ -349,7 +378,7 @@ export async function resolveUsernames(rpcUrl: string, members: DAOMember[]): Pr
     // Phase 2: resolve cache misses in parallel
     if (toResolve.length > 0) {
         const results = await Promise.all(
-            toResolve.map((idx) => resolveUsername(rpcUrl, members[idx].address)),
+            toResolve.map((idx) => resolveRegisteredUsername(members[idx].address)),
         )
         results.forEach((username, j) => {
             const idx = toResolve[j]

@@ -1,20 +1,12 @@
 /**
- * Unit tests for dao.ts — DAO ABCI parsers + message builders.
+ * Unit tests for dao.ts — DAO ABCI parsers.
  *
  * Strategy: export internal pure functions for direct testing,
  * test message builders via their public API.
  */
 import { describe, it, expect } from 'vitest'
+import { bech32Encode } from './realmAddress'
 import {
-    buildVoteMsg,
-    buildExecuteMsg,
-    buildProposeMsg,
-    buildArchiveMsg,
-    buildAssignRoleMsg,
-    buildRemoveRoleMsg,
-    buildProposeAddMemberMsg,
-    buildProposeRemoveMemberMsg,
-    buildProposeAssignRoleMsg,
     // Internal functions exported for testing (via _test exports)
     _normalizeStatus,
     _parseProposalList,
@@ -280,15 +272,17 @@ Tier T3 contains 20 members with power: 20
 // ── parseMembersFromRender ──────────────────────────────────────
 
 describe('parseMembersFromRender', () => {
+    const V = (i: number) => bech32Encode('g', new Uint8Array(20).fill(i))
+
     it('parses v5.3.0 format (roles + pipe + power)', () => {
         const data = `## Members (3)
-- g1addr1 (roles: admin, dev) | power: 3
-- g1addr2 (roles: member) | power: 1
-- g1addr3 (roles: finance) | power: 2
+- ${V(1)} (roles: admin, dev) | power: 3
+- ${V(2)} (roles: member) | power: 1
+- ${V(3)} (roles: finance) | power: 2
 `
         const members = _parseMembersFromRender(data)
         expect(members).toHaveLength(3)
-        expect(members[0].address).toBe('g1addr1')
+        expect(members[0].address).toBe(V(1))
         expect(members[0].roles).toEqual(['admin', 'dev'])
         expect(members[0].votingPower).toBe(3)
         expect(members[1].roles).toEqual(['member'])
@@ -296,19 +290,19 @@ describe('parseMembersFromRender', () => {
 
     it('parses v5.0.x format (power only)', () => {
         const data = `## Members (2)
-- g1abc (power: 1)
-- g1def (power: 2)
+- ${V(4)} (power: 1)
+- ${V(5)} (power: 2)
 `
         const members = _parseMembersFromRender(data)
         expect(members).toHaveLength(2)
-        expect(members[0].address).toBe('g1abc')
+        expect(members[0].address).toBe(V(4))
         expect(members[0].votingPower).toBe(1)
         expect(members[0].roles).toEqual([])
     })
 
     it('parses legacy em dash format', () => {
         const data = `## Members
-- g1abc (roles: admin) — power: 5
+- ${V(4)} (roles: admin) — power: 5
 `
         const members = _parseMembersFromRender(data)
         expect(members).toHaveLength(1)
@@ -369,188 +363,7 @@ describe('deriveRoleLabel', () => {
     })
 })
 
-// ── Message Builders ────────────────────────────────────────────
-
-describe('buildVoteMsg', () => {
-    it('builds GovDAO vote msg with MustVoteOnProposalSimple', () => {
-        const msg = buildVoteMsg('g1caller', 'gno.land/r/gov/dao', 42, 'YES')
-        expect(msg.type).toBe('vm/MsgCall')
-        expect(msg.value.func).toBe('MustVoteOnProposalSimple')
-        expect(msg.value.args).toEqual(['42', 'YES'])
-        expect(msg.value.pkg_path).toBe('gno.land/r/gov/dao')
-        expect(msg.value.caller).toBe('g1caller')
-    })
-
-    it('builds Memba DAO vote msg with VoteOnProposal', () => {
-        const msg = buildVoteMsg('g1caller', 'gno.land/r/samcrew/mydao', 1, 'NO')
-        expect(msg.value.func).toBe('VoteOnProposal')
-        expect(msg.value.args).toEqual(['1', 'NO'])
-    })
-
-    it('handles ABSTAIN vote', () => {
-        const msg = buildVoteMsg('g1caller', 'gno.land/r/samcrew/dao', 0, 'ABSTAIN')
-        expect(msg.value.args).toEqual(['0', 'ABSTAIN'])
-    })
-
-    // GovDAO supports abstain (gno#5271); Memba now enables the Abstain button for it
-    // (F-E6). Lock the on-chain message that button triggers.
-    it('builds GovDAO ABSTAIN via MustVoteOnProposalSimple (gno#5271)', () => {
-        const msg = buildVoteMsg('g1caller', 'gno.land/r/gov/dao', 5, 'ABSTAIN')
-        expect(msg.value.func).toBe('MustVoteOnProposalSimple')
-        expect(msg.value.args).toEqual(['5', 'ABSTAIN'])
-    })
-
-    it('includes correct caller address', () => {
-        const msg = buildVoteMsg('g1specificaddr', 'gno.land/r/gov/dao', 1, 'YES')
-        expect(msg.value.caller).toBe('g1specificaddr')
-    })
-})
-
-describe('buildExecuteMsg', () => {
-    it('builds execute message for Memba DAO', () => {
-        const msg = buildExecuteMsg('g1caller', 'gno.land/r/samcrew/dao', 5)
-        expect(msg.type).toBe('vm/MsgCall')
-        expect(msg.value.func).toBe('ExecuteProposal')
-        expect(msg.value.args).toEqual(['5'])
-        expect(msg.value.pkg_path).toBe('gno.land/r/samcrew/dao')
-    })
-
-    it('uses ExecuteOrRejectProposal for GovDAO (gno#5261)', () => {
-        const msg = buildExecuteMsg('g1caller', 'gno.land/r/gov/dao', 3)
-        expect(msg.value.func).toBe('ExecuteOrRejectProposal')
-        expect(msg.value.args).toEqual(['3'])
-    })
-})
-
-describe('buildProposeMsg', () => {
-    it('builds GovDAO propose msg with 2 args (no category)', () => {
-        const msg = buildProposeMsg('g1caller', 'gno.land/r/gov/dao', 'Title', 'Desc')
-        expect(msg.value.func).toBe('Propose')
-        expect(msg.value.args).toEqual(['Title', 'Desc'])
-    })
-
-    it('builds Memba DAO propose msg with 3 args (category)', () => {
-        const msg = buildProposeMsg('g1caller', 'gno.land/r/samcrew/dao', 'Title', 'Desc', 'treasury')
-        expect(msg.value.func).toBe('Propose')
-        expect(msg.value.args).toEqual(['Title', 'Desc', 'treasury'])
-    })
-
-    it('defaults category to "governance" for Memba DAOs', () => {
-        const msg = buildProposeMsg('g1caller', 'gno.land/r/samcrew/dao', 'T', 'D')
-        expect(msg.value.args).toEqual(['T', 'D', 'governance'])
-    })
-})
-
-describe('buildArchiveMsg', () => {
-    it('builds archive message with no args', () => {
-        const msg = buildArchiveMsg('g1admin', 'gno.land/r/samcrew/dao')
-        expect(msg.type).toBe('vm/MsgCall')
-        expect(msg.value.func).toBe('Archive')
-        expect(msg.value.args).toEqual([])
-        expect(msg.value.caller).toBe('g1admin')
-    })
-})
-
-// ── Member Management Builders ──────────────────────────────────
-
-describe('buildAssignRoleMsg', () => {
-    it('builds AssignRole MsgCall with target and role', () => {
-        const msg = buildAssignRoleMsg('g1admin', 'gno.land/r/samcrew/dao', 'g1target', 'dev')
-        expect(msg.type).toBe('vm/MsgCall')
-        expect(msg.value.func).toBe('AssignRole')
-        expect(msg.value.args).toEqual(['g1target', 'dev'])
-        expect(msg.value.pkg_path).toBe('gno.land/r/samcrew/dao')
-        expect(msg.value.caller).toBe('g1admin')
-    })
-
-    it('includes correct caller for admin role assignment', () => {
-        const msg = buildAssignRoleMsg('g1specificadmin', 'gno.land/r/user/mydao', 'g1member', 'admin')
-        expect(msg.value.caller).toBe('g1specificadmin')
-        expect(msg.value.args).toEqual(['g1member', 'admin'])
-    })
-})
-
-describe('buildRemoveRoleMsg', () => {
-    it('builds RemoveRole MsgCall with target and role', () => {
-        const msg = buildRemoveRoleMsg('g1admin', 'gno.land/r/samcrew/dao', 'g1target', 'finance')
-        expect(msg.type).toBe('vm/MsgCall')
-        expect(msg.value.func).toBe('RemoveRole')
-        expect(msg.value.args).toEqual(['g1target', 'finance'])
-        expect(msg.value.pkg_path).toBe('gno.land/r/samcrew/dao')
-    })
-
-    it('includes correct caller for role removal', () => {
-        const msg = buildRemoveRoleMsg('g1myadmin', 'gno.land/r/user/dao', 'g1member', 'member')
-        expect(msg.value.caller).toBe('g1myadmin')
-        expect(msg.value.args[0]).toBe('g1member')
-    })
-})
-
-// ── isGovDAO detection ──────────────────────────────────────────
-
-describe('GovDAO detection (via buildVoteMsg)', () => {
-    it('detects gno.land/r/gov/dao as GovDAO', () => {
-        const msg = buildVoteMsg('g1x', 'gno.land/r/gov/dao', 1, 'YES')
-        expect(msg.value.func).toBe('MustVoteOnProposalSimple')
-    })
-
-    it('detects gno.land/r/gov/dao/v3 as GovDAO', () => {
-        const msg = buildVoteMsg('g1x', 'gno.land/r/gov/dao/v3', 1, 'YES')
-        expect(msg.value.func).toBe('MustVoteOnProposalSimple')
-    })
-
-    it('does NOT detect user DAOs as GovDAO', () => {
-        const msg = buildVoteMsg('g1x', 'gno.land/r/samcrew/memba_dao', 1, 'YES')
-        expect(msg.value.func).toBe('VoteOnProposal')
-    })
-})
-
-// ── Member Proposal Builders (governance-gated) ───────────────────
-
-describe('buildProposeAddMemberMsg', () => {
-    it('builds ProposeAddMember MsgCall with address, power, roles', () => {
-        const msg = buildProposeAddMemberMsg('g1admin', 'gno.land/r/user/dao', 'g1newmember', 5, 'dev,member')
-        expect(msg.type).toBe('vm/MsgCall')
-        expect(msg.value.func).toBe('ProposeAddMember')
-        expect(msg.value.args).toEqual(['g1newmember', '5', 'dev,member'])
-        expect(msg.value.pkg_path).toBe('gno.land/r/user/dao')
-        expect(msg.value.caller).toBe('g1admin')
-    })
-
-    it('converts power to string for MsgCall args', () => {
-        const msg = buildProposeAddMemberMsg('g1x', 'gno.land/r/test/dao', 'g1target', 10, 'admin')
-        expect(msg.value.args[1]).toBe('10')
-    })
-})
-
-describe('buildProposeRemoveMemberMsg', () => {
-    it('builds ProposeRemoveMember MsgCall with target address', () => {
-        const msg = buildProposeRemoveMemberMsg('g1admin', 'gno.land/r/user/dao', 'g1target')
-        expect(msg.type).toBe('vm/MsgCall')
-        expect(msg.value.func).toBe('ProposeRemoveMember')
-        expect(msg.value.args).toEqual(['g1target'])
-        expect(msg.value.pkg_path).toBe('gno.land/r/user/dao')
-    })
-
-    it('includes correct caller', () => {
-        const msg = buildProposeRemoveMemberMsg('g1myadmin', 'gno.land/r/test/dao', 'g1member')
-        expect(msg.value.caller).toBe('g1myadmin')
-    })
-})
-
-describe('buildProposeAssignRoleMsg', () => {
-    it('builds ProposeAssignRole MsgCall with target and role', () => {
-        const msg = buildProposeAssignRoleMsg('g1admin', 'gno.land/r/user/dao', 'g1member', 'finance')
-        expect(msg.type).toBe('vm/MsgCall')
-        expect(msg.value.func).toBe('ProposeAssignRole')
-        expect(msg.value.args).toEqual(['g1member', 'finance'])
-    })
-
-    it('preserves role string exactly', () => {
-        const msg = buildProposeAssignRoleMsg('g1x', 'gno.land/r/dao', 'g1y', 'ops')
-        expect(msg.value.args[1]).toBe('ops')
-    })
-})
+// Message builders are covered by builders.abi.test.ts (kind-checked, ABI-pinned).
 
 // ── DAO config heading strip (R1 fix) ──────────────────────────
 

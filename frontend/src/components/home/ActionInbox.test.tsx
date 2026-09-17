@@ -7,12 +7,13 @@
  *     called directly by ActionInbox any more)
  *   - react-router-dom useOutletContext (layout context)
  *   - useNetworkNav / useNetworkPath (route prefix)
- *   - doContractBroadcast / buildVoteMsg / clearVoteCache (chain calls)
+ *   - doContractBroadcast / buildDaoMsg / clearVoteCache (chain calls)
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { screen, fireEvent, act } from "@testing-library/react"
 import { renderWithProviders } from "../../test/test-utils"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ActionInbox } from "./ActionInbox"
 
 // ── Module mocks ──────────────────────────────────────────────
@@ -67,7 +68,8 @@ vi.mock("../../lib/grc20", () => ({
 }))
 
 vi.mock("../../lib/dao", () => ({
-    buildVoteMsg: vi.fn(() => ({ type: "vm/MsgCall", value: {} })),
+    buildDaoMsg: vi.fn(() => ({ type: "vm/MsgCall", value: {} })),
+    resolveDaoKind: vi.fn(async () => "memba-v1"),
 }))
 
 vi.mock("../../lib/dao/voteScanner", () => ({
@@ -222,11 +224,11 @@ describe("ActionInbox — inline vote fires broadcast", () => {
             ],
         })
         vi.mocked(grc20Mod.doContractBroadcast).mockResolvedValue({ hash: "tx123" })
-        vi.mocked(daoMod.buildVoteMsg).mockReturnValue({ type: "vm/MsgCall", value: {} })
+        vi.mocked(daoMod.buildDaoMsg).mockReturnValue({ type: "vm/MsgCall", value: {} })
         vi.mocked(voteScannerMod.clearVoteCache).mockReset()
     })
 
-    it("clicking YES calls doContractBroadcast and buildVoteMsg with the proposal id", async () => {
+    it("clicking YES calls doContractBroadcast and buildDaoMsg with the proposal id", async () => {
         renderWithProviders(<ActionInbox />)
 
         const yesButton = screen.getByRole("button", { name: /vote yes on proposal 1/i })
@@ -234,14 +236,50 @@ describe("ActionInbox — inline vote fires broadcast", () => {
             fireEvent.click(yesButton)
         })
 
-        expect(daoMod.buildVoteMsg).toHaveBeenCalledWith(
-            "g1testaddress",
-            "gno.land/r/memba/dao",
-            1,
-            "YES",
-        )
+        expect(daoMod.buildDaoMsg).toHaveBeenCalledWith("memba-v1", "gno.land/r/memba/dao", { type: "vote", id: 1, vote: "YES" }, "g1testaddress")
         expect(grc20Mod.doContractBroadcast).toHaveBeenCalledTimes(1)
         expect(voteScannerMod.clearVoteCache).toHaveBeenCalledTimes(1)
+    })
+})
+
+describe("ActionInbox — Quick Vote scoping and errors", () => {
+    const outletFor = (address: string) => ({
+        adena: { connected: true, address, pubkeyJSON: "", chainId: "test-13", installed: true, loading: false, connect: vi.fn(), disconnect: vi.fn(), signArbitrary: vi.fn() },
+        balance: "100",
+        auth: { token: { raw: "tok" }, isAuthenticated: true, address, loading: false, error: null },
+        isLoggingIn: false,
+        syncTimedOut: false,
+    })
+
+    beforeEach(async () => {
+        const router = await import("react-router-dom")
+        vi.mocked(router.useOutletContext).mockReturnValue(outletFor("g1testaddress"))
+        vi.mocked(homeActionsMod.useHomeActions).mockReturnValue({
+            actions: [{ id: "vote:gno.land/r/memba/dao:1", kind: "vote", accent: "teal", eyebrow: "vote · Memba DAO", title: "Proposal Alpha", meta: "open", href: "/dao/memba/proposal/1" }],
+            loading: false,
+            allCaughtUp: false,
+            unvotedProposals: [{ daoName: "Memba DAO", daoSlug: "memba", realmPath: "gno.land/r/memba/dao", proposalId: 1, proposalTitle: "Proposal Alpha", proposalStatus: "open" }],
+        })
+        vi.mocked(grc20Mod.doContractBroadcast).mockResolvedValue({ hash: "tx123" })
+    })
+
+    it("does not carry one wallet's recorded vote over to another wallet", async () => {
+        const router = await import("react-router-dom")
+        const view = renderWithProviders(<ActionInbox />)
+        await act(async () => { fireEvent.click(screen.getByRole("button", { name: /vote yes on proposal 1/i })) })
+        expect(screen.queryByRole("button", { name: /vote yes on proposal 1/i })).not.toBeInTheDocument()
+
+        vi.mocked(router.useOutletContext).mockReturnValue(outletFor("g1otherwallet"))
+        const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        view.rerender(<QueryClientProvider client={client}><router.MemoryRouter><ActionInbox /></router.MemoryRouter></QueryClientProvider>)
+        expect(screen.getByRole("button", { name: /vote yes on proposal 1/i })).toBeInTheDocument()
+    })
+
+    it("shows a failed Quick Vote to the user", async () => {
+        vi.mocked(grc20Mod.doContractBroadcast).mockRejectedValue(new Error("already voted"))
+        renderWithProviders(<ActionInbox />)
+        await act(async () => { fireEvent.click(screen.getByRole("button", { name: /vote yes on proposal 1/i })) })
+        expect(screen.getByRole("alert")).toHaveTextContent(/already voted/)
     })
 })
 

@@ -3,11 +3,14 @@ import { useNetworkNav } from "../../hooks/useNetworkNav"
 import { SkeletonCard } from "../ui/LoadingSkeleton"
 import { ProposalCard } from "./ProposalCard"
 import type { DAOProposal } from "../../lib/dao"
+import { downloadProposalsCsv } from "../../lib/dao/proposalsCsv"
 
 interface DAOProposalsSectionProps {
     encodedSlug: string
     realmPath: string
     isAuthenticated: boolean
+    /** Contract accepts proposals, the wallet is a member and the DAO is not archived. */
+    canPropose?: boolean
     isArchived: boolean
     isMember: boolean
     memberCount: number
@@ -19,7 +22,7 @@ interface DAOProposalsSectionProps {
 }
 
 export function DAOProposalsSection({
-    encodedSlug, realmPath, isAuthenticated, isArchived, isMember, memberCount,
+    encodedSlug, realmPath, isAuthenticated, canPropose = false, isMember, memberCount,
     activeProposals, completedProposals, votedIds, enrichedIds, proposalsLoading,
 }: DAOProposalsSectionProps) {
     const navigate = useNetworkNav()
@@ -31,7 +34,16 @@ export function DAOProposalsSection({
             <div id="dao-proposals-section">
                 <div className="dao-section-header">
                     <h3 className="dao-section-title">Active Proposals</h3>
-                    {isAuthenticated && !isArchived && (
+                    {activeProposals.length + completedProposals.length > 0 && (
+                        <button
+                            type="button"
+                            className="k-btn-secondary"
+                            onClick={() => downloadProposalsCsv(realmPath, [...activeProposals, ...completedProposals])}
+                        >
+                            Export CSV
+                        </button>
+                    )}
+                    {canPropose && (
                         <button
                             className="k-btn-primary dao-new-proposal-btn"
                             onClick={() => navigate(`/dao/${encodedSlug}/propose`)}

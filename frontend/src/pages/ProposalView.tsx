@@ -15,15 +15,14 @@ import {
     getProposalVotes,
     getDAOMembers,
     getDAOConfig,
-    buildVoteMsg,
-    buildExecuteMsg,
+    buildDaoMsg,
     PROPOSAL_STATUS_COLORS,
 } from "../lib/dao"
 import { doContractBroadcast } from "../lib/grc20"
 import { clearVoteCache, voterMatchesUser } from "../lib/dao/voteScanner"
 import { logChainError } from "../lib/errorLog"
-import { AnalystReport } from "../components/dao/AnalystReport"
 import { useDaoRoute } from "../hooks/useDaoRoute"
+import { useDaoKind } from "../hooks/useDaoKind"
 import { resolveOnChainUsername } from "../lib/profile"
 import { TierVoteBlock } from "../components/proposal"
 import { ProProposalVotes } from "../components/dao/ProProposalVotes"
@@ -42,6 +41,7 @@ export function ProposalView() {
     const [success, setSuccess] = useState<string | null>(null)
 
     const proposalId = parseInt(id || "", 10)
+    const { kind: daoKind, capabilities } = useDaoKind(realmPath)
 
     // ── Server state, in React Query ──────────────────────────
     // Proposal + votes, with the 30s auto-refresh for OPEN proposals expressed
@@ -169,7 +169,8 @@ export function ProposalView() {
         setActionError(null)
         setSuccess(null)
         try {
-            const msg = buildVoteMsg(adena.address, realmPath, proposalId, vote)
+            if (!daoKind) throw new Error("This DAO contract could not be identified yet")
+            const msg = buildDaoMsg(daoKind, realmPath, { type: "vote", id: proposalId, vote }, adena.address)
             await doContractBroadcast([msg], `Vote ${vote} on Proposal #${proposalId}`)
             clearVoteCache() // Invalidate notification dot cache immediately
             setSuccess(`Voted ${vote} on Proposal #${proposalId}`)
@@ -197,7 +198,8 @@ export function ProposalView() {
         setActionError(null)
         setSuccess(null)
         try {
-            const msg = buildExecuteMsg(adena.address, realmPath, proposalId)
+            if (!daoKind) throw new Error("This DAO contract could not be identified yet")
+            const msg = buildDaoMsg(daoKind, realmPath, { type: "execute", id: proposalId }, adena.address)
             await doContractBroadcast([msg], `Execute Proposal #${proposalId}`)
             // With ExecuteOrRejectProposal (gno#5261), the tx succeeds but the
             // proposal may be rejected if execution errored. Reload to get final status.
@@ -384,18 +386,20 @@ export function ProposalView() {
                 </div>
             )}
 
-            {/* AI Analyst Consensus — only render when proposal is loaded */}
-            {proposal && (proposal.description || proposal.title) && (
-                <AnalystReport
-                    realmPath={realmPath}
-                    proposalId={proposalId}
-                    proposalData={proposal.description || proposal.title}
-                    daoContext={`DAO: ${realmPath}, Proposal #${proposalId}: ${proposal.title}`}
-                />
+            {proposal.actionUnverified && (
+                <div className="k-card proposal-action-card" role="status">
+                    <h3 className="proposal-action-title">Action type could not be verified</h3>
+                    <p className="proposal-desc-text">This proposal contains text formatted like the contract&apos;s action details, so no action summary is shown. Review the proposal on the realm before voting.</p>
+                </div>
+            )}
+            {proposal.actionType && /ChangeDAOImplementation/.test(proposal.actionType) && (
+                <div className="proposal-warning" role="alert">
+                    ⚠ This proposal replaces the DAO&apos;s code. If executed, the new code controls the DAO.
+                </div>
             )}
 
             {/* v2.13: Proposal Action Metadata */}
-            {(proposal.actionType || proposal.actionBody || proposal.executorRealm) && (
+            {!proposal.actionUnverified && (proposal.actionType || proposal.actionBody || proposal.executorRealm) && (
                 <div className="k-card proposal-action-card">
                     <h3 className="proposal-action-title">
                         📦 Proposal Action
@@ -465,18 +469,12 @@ export function ProposalView() {
             {/* Actions */}
             {auth.isAuthenticated && !isArchived && (
                 <div className="proposal-actions-col">
-                    {proposal.status === "open" && (
+                    {proposal.status === "open" && capabilities.vote && (
                         <>
                             {/* Membership warning */}
                             {isMember === false && (
                                 <div className="proposal-warning proposal-warning--mb">
-                                    ⚠ Your wallet ({adena.address?.slice(0, 10)}...{adena.address?.slice(-4)}) is not a member of this DAO. Switch wallets in Adena to vote, or{" "}
-                                    <button
-                                        onClick={() => navigate(`/dao/${encodedSlug}/candidature`)}
-                                        style={{ background: "none", border: "none", padding: 0, color: "var(--color-primary)", cursor: "pointer", fontFamily: "inherit", fontSize: "inherit", textDecoration: "underline" }}
-                                    >
-                                        apply to join this DAO
-                                    </button>.
+                                    ⚠ Your wallet ({adena.address?.slice(0, 10)}...{adena.address?.slice(-4)}) is not a member of this DAO. Switch wallets in Adena to vote.
                                 </div>
                             )}
                             {hasVoted ? (
@@ -518,13 +516,13 @@ export function ProposalView() {
                         </>
                     )}
 
-                    {proposal.status === "passed" && isMember && (
+                    {proposal.status === "passed" && isMember && capabilities.execute && (
                         <button className="k-btn-primary" onClick={handleExecute} disabled={actionLoading} aria-label={`Execute proposal ${proposalId}`} style={{ width: "100%", background: "var(--color-k-accent)", opacity: actionLoading ? 0.5 : 1 }}>
                             {actionLoading ? "Executing..." : "⚡ Execute Proposal"}
                         </button>
                     )}
 
-                    {proposal.status === "passed" && isMember === false && (
+                    {proposal.status === "passed" && isMember === false && capabilities.execute && (
                         <div className="proposal-warning">
                             ⚠ Only DAO members can execute passed proposals.
                         </div>

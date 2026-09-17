@@ -7,7 +7,6 @@
  * 3. Gno Networks — chain configs, RPC, explorer
  * 4. Address Constants — bech32, units
  * 5. External Services — gnolove, DAO realm
- * 6. GnoSwap DEX — per-chain contract paths
  * 7. RPC Security — domain allowlist
  *
  * All env vars read from Vite's import.meta.env with sensible defaults.
@@ -30,20 +29,6 @@ export const PRO_UI_ENABLED = PRO_APP_ENABLED || import.meta.env.VITE_ENABLE_PRO
 export const PRO_SHELL_ENABLED = PRO_APP_ENABLED || import.meta.env.VITE_ENABLE_PRO_SHELL === "true"
 /** Default-off DAO overview and proposal reading presentation. */
 export const PRO_GOVERNANCE_ENABLED = PRO_APP_ENABLED || import.meta.env.VITE_ENABLE_PRO_GOVERNANCE === "true"
-
-/**
- * Treasury spend kill-switch (AAA-0 A1.a — CRITICAL fund safety).
- *
- * When false (default): hides "Propose Spend" UI, replaces deposit-inviting
- * copy with a fund-safety warning, and blocks deep-links to /treasury/propose.
- *
- * WHY: ExecuteProposal in the DAO template has no banker code — spends never
- * execute, but the UI invites deposits that are permanently irrecoverable.
- * This flag stays false until A1.c implements the real banker treasury.
- *
- * @see docs/planning/MEMBA_AAA_IMPLEMENTATION_PLAN.md §5/A1
- */
-export const TREASURY_SPEND_ENABLED = import.meta.env.VITE_ENABLE_TREASURY_SPEND === "true"
 
 /**
  * Agent credit deposit kill-switch (AAA-0 A5.ui — fail-closed).
@@ -138,6 +123,7 @@ interface NetworkConfig {
      *  a notice instead of letting DAO/channel features fail with 404s. Omitted
      *  (or true) means the realms are deployed. */
     realmsDeployed?: boolean
+    userDaos?: { create: boolean; channelsCompanion: boolean }
 }
 
 /** Available Gno networks for the chain selector. */
@@ -161,6 +147,7 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     // redirects; remove the entry once nothing references it.
     test13: {
         chainId: "test-13",
+        userDaos: { create: false, channelsCompanion: false },
         hidden: true,
         isTestnet: true,
         rpcUrl: import.meta.env.VITE_TEST13_RPC_URL || "https://rpc.test13.testnets.gno.land:443",
@@ -203,6 +190,7 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     // entry once nothing references it.
     topaz: {
         chainId: "topaz-1",
+        userDaos: { create: false, channelsCompanion: false },
         hidden: true,
         isTestnet: true,
         // No monitoringChain override: gnomonitoring's registry currently
@@ -264,6 +252,7 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     // faucet answers the standard gno JSON-RPC 2.0 shape.
     sapphire: {
         chainId: "sapphire-1",
+        userDaos: { create: false, channelsCompanion: false },
         // Retired to hidden per the 2026-09-09 sunset (owner directive recorded
         // above): the chain is being decommissioned; a hidden entry keeps
         // stored-network users resolvable (they fall back to the default
@@ -331,6 +320,7 @@ export const NETWORKS: Record<string, NetworkConfig> = {
         // adds pearl-1 to the backend's MEMBA_ACCEPTED_CHAIN_IDS
         // (AUTH-CHAINID-MISMATCH-01), never a wrong-chain tx.
         chainId: "pearl-1",
+        userDaos: { create: true, channelsCompanion: true },
         hidden: false,
         // Flipped by the §6 completion PR: the combined Pearl ceremony (core
         // set + commerce set) records per-artifact vm/qfile evidence in
@@ -367,6 +357,7 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     },
     gnoland1: {
         chainId: "gnoland1",
+        userDaos: { create: false, channelsCompanion: false },
         rpcUrl: "https://rpc.gnoland1.samourai.live:443",
         fallbackRpcUrls: [
             "https://rpc.gnoland1.moul.p2p.team",
@@ -400,8 +391,8 @@ export const NETWORKS: Record<string, NetworkConfig> = {
         //   server-rejected tokens; authSession is the durable half). Until
         //   the owner adds "gnoland1" to MEMBA_ACCEPTED_CHAIN_IDS, a login
         //   attempt here gets a clean surfaced refusal, not a dead session.
-        // Memba still deploys NOTHING to Betanet — FEATURED_DAO_REALM.gnoland1
-        // is null; realm-dependent surfaces stay honestly gated.
+        // Memba still deploys NOTHING to Betanet; realm-dependent surfaces stay
+        // honestly gated.
         hidden: false,
         realmsDeployed: false,
         // Live-verified 2026-07-31: serves `<meta name="chainid" content="gnoland1">`,
@@ -478,6 +469,7 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     // empty set accepts EVERY chain (F-29b fails open).
     mainnet: {
         chainId: "gnoland-1",
+        userDaos: { create: false, channelsCompanion: false },
         // UN-HIDDEN for the read-only lanes only. What this does and does not
         // unlock is the whole point of the split below:
         //
@@ -1183,31 +1175,6 @@ export const GNO_MONITORING_API_URL = (() => {
  *  Only loaded by the /alerts route (lazy). No impact on other pages. */
 export const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || ""
 
-// ── 6. GnoSwap DEX Integration ───────────────────────────────
-
-/** GnoSwap realm paths per chain. */
-export interface GnoSwapPaths {
-    pool: string
-    router: string
-    position: string
-    /** GNS token realm — has working Render() for availability checks. */
-    gns: string
-}
-
-/** Per-chain GnoSwap contract paths. Empty strings = not deployed on that chain. */
-export const GNOSWAP_PATHS: Record<string, GnoSwapPaths> = {
-    test13: { pool: "", router: "", position: "", gns: "" },
-    topaz: { pool: "", router: "", position: "", gns: "" },
-    gnoland1: { pool: "", router: "", position: "", gns: "" },
-}
-
-/** Get GnoSwap paths for the active chain. Returns null if not deployed. */
-export function getGnoSwapPaths(): GnoSwapPaths | null {
-    const paths = GNOSWAP_PATHS[_activeNetwork]
-    if (!paths || !paths.gns) return null
-    return paths
-}
-
 // ── 7. RPC Domain Security ───────────────────────────────────
 
 /**
@@ -1382,36 +1349,6 @@ export const FEED_INDEXED_NETWORK_LABEL =
  */
 export function isFeedWritable(): boolean {
     return ACTIVE_NETWORK_KEY === FEED_INDEXED_NETWORK
-}
-
-/**
- * Featured DAO realm path per network key — the DAO surfaced on the home
- * StateBoard for everyone (members + visitors). Null means the panel
- * self-hides on that network.
- *
- * Only networks where the realm is confirmed callable are populated; an
- * absent/null entry causes FeaturedDaoPanel to render null (no error).
- */
-export const FEATURED_DAO_REALM: Record<string, string | null> = {
-    test13: MEMBA_DAO.realmPath, // "gno.land/r/samcrew/memba_dao" — live on test13 (chain retired)
-    topaz: MEMBA_DAO.realmPath,  // "gno.land/r/samcrew/memba_dao" — live on topaz-1 (2026-07-21 ceremony; chain retired 2026-08-12)
-    gnoland1: null,
-    // Set in the cutover PR whose ceremony published memba_dao to sapphire-1
-    // (chain proof in realm-versions.json). getFeaturedDaoRealm re-checks
-    // isRealmValidOn, so this stays inert unless the allowlist agrees.
-    sapphire: MEMBA_DAO.realmPath,
-}
-
-/**
- * Get the featured DAO realm path for a given network key.
- * Returns null when no featured DAO is configured or the realm is not valid.
- */
-export function getFeaturedDaoRealm(networkKey: string): string | null {
-    const path = FEATURED_DAO_REALM[networkKey] ?? null
-    if (!path) return null
-    // Guard: realm must also be valid on the network (covers REALM_ALLOWLIST)
-    if (!isRealmValidOn(networkKey, path)) return null
-    return path
 }
 
 // ── Per-feature validity predicates (back each feature by its realm) ──

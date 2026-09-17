@@ -17,15 +17,13 @@ import {
     type DAOProposal,
 } from "../lib/dao"
 import { useDaoRoute } from "../hooks/useDaoRoute"
+import { useDaoKind } from "../hooks/useDaoKind"
 import { resolveOnChainUsername } from "../lib/profile"
 import { voterMatchesUser } from "../lib/dao/voteScanner"
-import { useJitsiContext } from "../contexts/JitsiContext"
-import { DeployPluginModal } from "../components/dao/DeployPluginModal"
 import { DAOOverviewCard } from "../components/dao/DAOOverviewCard"
 import { ProDAOProposals } from "../components/dao/ProDAOProposals"
 import { DAOProposalsSection } from "../components/dao/DAOProposalsSection"
 import { DAOMembersPreview } from "../components/dao/DAOMembersPreview"
-import { DAOTreasuryCard, DAOPluginsGrid } from "../components/dao/DAOPluginsGrid"
 import { completeQuest, trackPageVisit } from "../lib/quests"
 import type { LayoutContext } from "../types/layout"
 import "./daohome.css"
@@ -35,9 +33,7 @@ export function DAOHome() {
     const navigate = useNetworkNav()
     const { realmPath, encodedSlug } = useDaoRoute()
     const { auth, adena } = useOutletContext<LayoutContext>()
-    const { session, joinRoom } = useJitsiContext()
-
-    const [showDeployModal, setShowDeployModal] = useState(false)
+    const { capabilities } = useDaoKind(realmPath)
 
     // ── Server state, in React Query ──────────────────────────────
     // The old page hand-rolled a config → (members ∥ proposals) chain plus a
@@ -143,8 +139,10 @@ export function DAOHome() {
             title: p.titleIsPlaceholder && detail?.title && detail.title !== fallbackProposalTitle(p.id)
                 ? detail.title
                 : p.title,
-            yesPercent: detail?.yesPercent || (totalCount > 0 ? Math.round((yesCount / totalCount) * 100) : 0),
-            noPercent: detail?.noPercent || (totalCount > 0 ? Math.round((noCount / totalCount) * 100) : 0),
+            // Percentages are voting-power shares from the proposal detail; a
+            // head count of voters is never substituted for them.
+            yesPercent: detail ? detail.yesPercent : p.yesPercent,
+            noPercent: detail ? detail.noPercent : p.noPercent,
             yesVotes: detail?.yesVotes || yesCount,
             noVotes: detail?.noVotes || noCount,
             abstainVotes: detail?.abstainVotes || 0,
@@ -191,21 +189,9 @@ export function DAOHome() {
     const nonVoterCount = memberCount > 0 ? Math.max(0, memberCount - maxVoterParticipation) : 0
     const nonVoterPercent = memberCount > 0 ? Math.round((nonVoterCount / memberCount) * 100) : 0
     const currentMember = members.find((m) => m.address === adena.address)
+    // New proposals: only where the contract accepts them, and only for members.
+    const canPropose = capabilities.propose.length > 0 && auth.isAuthenticated && !!currentMember && !config?.isArchived
     const totalPower = config?.tierDistribution?.reduce((sum, t) => sum + t.power, 0) || 0
-
-    // Derived values remain unchanged; avoid retaining a manual memo across preview branches.
-    const healthScore = (() => {
-        if (!config || proposals.length === 0) return null
-        const participationPts = proposalsWithVotes.length > 0
-            ? Math.round((1 - nonVoterPercent / 100) * 40) : 0
-        const execBacklog = awaitingExecution.length
-        const execPts = execBacklog === 0 ? 30 : execBacklog <= 2 ? 20 : execBacklog <= 5 ? 10 : 0
-        const activityPts = proposals.length >= 10 ? 30 : proposals.length >= 5 ? 20 : proposals.length >= 2 ? 10 : 5
-        const total = participationPts + execPts + activityPts
-        const grade = total >= 80 ? "A" : total >= 60 ? "B" : total >= 40 ? "C" : "D"
-        const color = grade === "A" ? "var(--color-brand)" : grade === "B" ? "var(--color-accent-blue-sky)" : grade === "C" ? "var(--color-accent-gold-warm)" : "var(--color-status-error-deep)"
-        return { grade, total, color, participationPts, execPts, activityPts }
-    })()
 
     useEffect(() => {
         if (!realmPath) navigate("/dao")
@@ -237,7 +223,6 @@ export function DAOHome() {
                 encodedSlug={encodedSlug}
                 currentMember={currentMember}
                 isAuthenticated={auth.isAuthenticated}
-                walletAddress={adena.address}
                 memberCount={memberCount}
                 activeProposals={activeProposals.length}
                 awaitingExecution={awaitingExecution.length}
@@ -247,9 +232,7 @@ export function DAOHome() {
                 maxVoterParticipation={maxVoterParticipation}
                 proposalsWithVotesCount={proposalsWithVotes.length}
                 totalPower={totalPower}
-                healthScore={healthScore}
-                session={session}
-                joinRoom={joinRoom}
+                channels={capabilities.channels}
             />
 
             <div aria-live="polite">
@@ -260,12 +243,13 @@ export function DAOHome() {
                 loading={proposalsLoading}
                 failed={proposalsQuery.isError}
                 retry={() => { void proposalsQuery.refetch() }}
-                canPropose={auth.isAuthenticated && !config?.isArchived}
+                canPropose={canPropose}
                 votedIds={votedIds}
             /> : <DAOProposalsSection
                 encodedSlug={encodedSlug}
                 realmPath={realmPath}
                 isAuthenticated={auth.isAuthenticated}
+                canPropose={canPropose}
                 isArchived={config?.isArchived || false}
                 isMember={!!currentMember}
                 memberCount={memberCount}
@@ -286,18 +270,6 @@ export function DAOHome() {
                 currentUserAddress={adena.address}
             />}
 
-            <DAOTreasuryCard encodedSlug={encodedSlug} />
-            <DAOPluginsGrid encodedSlug={encodedSlug} />
-
-            {showDeployModal && (
-                <DeployPluginModal
-                    daoRealmPath={realmPath}
-                    daoName={config?.name || realmPath.split("/").pop() || "DAO"}
-                    callerAddress={adena.address || ""}
-                    onClose={() => setShowDeployModal(false)}
-                    onDeployed={() => { setShowDeployModal(false); void configQuery.refetch(); void membersQuery.refetch(); void proposalsQuery.refetch() }}
-                />
-            )}
 
             <ErrorToast message={error} onDismiss={() => setFetchErrorDismissed(true)} onRetry={() => { setFetchErrorDismissed(false); void configQuery.refetch(); void membersQuery.refetch(); void proposalsQuery.refetch() }} />
         </div>

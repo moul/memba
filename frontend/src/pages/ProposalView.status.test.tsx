@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { ProposalView } from './ProposalView'
-import { buildExecuteMsg, buildVoteMsg } from '../lib/dao'
+import { buildDaoMsg } from '../lib/dao'
 import { readFileSync } from 'node:fs'
 import { resilientAbciQuery } from '../lib/rpcFallback'
 
@@ -16,11 +16,11 @@ const state = vi.hoisted(() => ({
     address: 'g1testmember',
 }))
 vi.mock('react-router-dom', async importOriginal => ({ ...await importOriginal<typeof import('react-router-dom')>(), useOutletContext: () => ({ auth: { isAuthenticated: state.authenticated }, adena: { address: state.authenticated ? state.address : '' } }) }))
+vi.mock('../hooks/useDaoKind', async () => { const { capabilitiesFor } = await import('../lib/dao/kind'); const { NETWORKS } = await import('../lib/config'); return { useDaoKind: (path: string) => { const kind = path === 'gno.land/r/gov/dao' ? 'govdao' as const : 'memba-v1' as const; return { kind, capabilities: capabilitiesFor(kind, NETWORKS.pearl), loading: false, error: null } } } })
 vi.mock('../hooks/useDaoRoute', () => ({ useDaoRoute: () => ({ realmPath: state.realm, encodedSlug: state.realm, proposalId: '4' }) }))
 vi.mock('../hooks/useNetworkNav', () => ({ useNetworkNav: () => vi.fn() }))
 vi.mock('../hooks/useProposalDate', () => ({ useProposalDate: () => ({ timestamp: null }) }))
 vi.mock('../lib/profile', () => ({ resolveOnChainUsername: async () => 'alice' }))
-vi.mock('../components/dao/AnalystReport', () => ({ AnalystReport: () => null }))
 vi.mock('../components/dao/TierPieChart', () => ({ VotingInsights: () => <div>Legacy voting insights</div> }))
 vi.mock('../lib/grc20', async importOriginal => ({ ...await importOriginal<typeof import('../lib/grc20')>(), doContractBroadcast: state.broadcast }))
 vi.mock('../lib/dao/voteScanner', () => ({ clearVoteCache: vi.fn() }))
@@ -52,11 +52,12 @@ describe('transaction controls using the real proposal parser', () => {
         expect(state.broadcast).not.toHaveBeenCalled()
         fireEvent.click(vote)
         fireEvent.click(screen.getByRole('button', { name: 'Confirm YES', exact: true }))
-        await waitFor(() => expect(state.broadcast).toHaveBeenCalledWith([buildVoteMsg(state.address, 'gno.land/r/team/dao', 4, 'YES')], 'Vote YES on Proposal #4'))
+        await waitFor(() => expect(state.broadcast).toHaveBeenCalledWith([buildDaoMsg('memba-v1', 'gno.land/r/team/dao', { type: 'vote', id: 4, vote: 'YES' }, state.address)], 'Vote YES on Proposal #4'))
     })
     it('retains non-member restrictions', async () => {
         state.member = false; mount()
         await waitFor(() => expect(screen.getByRole('button', { name: 'Vote Yes on this proposal' })).toBeDisabled())
+        expect(screen.queryByRole('button', { name: /apply to join/i })).not.toBeInTheDocument()
         expect(state.broadcast).not.toHaveBeenCalled()
     })
     it.each(['open', 'passed'])('retains archive restrictions for %s proposals', async status => {
@@ -71,7 +72,7 @@ describe('transaction controls using the real proposal parser', () => {
         expect(screen.queryByRole('button', { name: 'Vote Yes on this proposal' })).not.toBeInTheDocument()
         expect(state.broadcast).not.toHaveBeenCalled()
         fireEvent.click(execute)
-        await waitFor(() => expect(state.broadcast).toHaveBeenCalledWith([buildExecuteMsg(state.address, 'gno.land/r/team/dao', 4)], 'Execute Proposal #4'))
+        await waitFor(() => expect(state.broadcast).toHaveBeenCalledWith([buildDaoMsg('memba-v1', 'gno.land/r/team/dao', { type: 'execute', id: 4 }, state.address)], 'Execute Proposal #4'))
     })
     it('offers no repeat execution or voting for the accepted mainnet GovDAO proposal', async () => {
         state.realm = 'gno.land/r/gov/dao'; state.status = 'passed'; mount()

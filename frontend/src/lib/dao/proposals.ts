@@ -7,6 +7,7 @@
 import { queryRender, queryRenderPage, queryEval, parseQevalJSON, normalizeStatus, unescapeMarkdown, hasOwnSubpageLink, detectMaxPage, getDaoDialect, setDaoDialect, deleteDaoDialect, type DAOProposal, type VoteRecord, type VoterEntry } from "./shared"
 import { BECH32_PREFIX } from "../config"
 import { parseGeneratedProposalDetail, readGeneratedProposalRecord } from "./generatedProposalDetail"
+import { isValidGnoAddressChecksum } from "./address"
 
 // ── Proposal Cache ────────────────────────────────────────────
 // In-memory cache with 30s TTL to avoid redundant ABCI round-trips
@@ -531,7 +532,16 @@ export async function getProposalDetail(
             // must never enter the daokit/legacy metadata regexes below.
             const json = await queryEval(rpcUrl, realmPath, 'GetProposalsJSON()', false)
             const rows = json ? parseQevalJSON(json) : null
-            return Array.isArray(rows) ? readGeneratedProposalRecord(rows, id) : generated
+            if (!Array.isArray(rows)) return generated
+            const record = readGeneratedProposalRecord(rows, id)
+            // The JSON has no electorate denominator. When it describes exactly
+            // the state the render footer shows, the footer's electorate-based
+            // percentages belong to the same state and are kept.
+            if (record && record.status === generated.status && record.yesVotes === generated.yesVotes
+                && record.noVotes === generated.noVotes && record.abstainVotes === generated.abstainVotes) {
+                return { ...record, yesPercent: generated.yesPercent, noPercent: generated.noPercent }
+            }
+            return record
         }
 
         // gnodaokit/basedao detail page (deployed ProposalDetailPageView):
@@ -563,8 +573,13 @@ export async function getProposalDetail(
             const desc = postDesc.match(/^##\s+Description\s+📝\s*\n\n([\s\S]*?)\n\n##\s+Resource\s+-/m)
             const status = matchLast(data, /^##\s+Status\s+-\s+(\w+)/m)
             const proposer = matchLast(data, />\s*proposed by\s+(g1[a-z0-9]+)/)?.[1] || ""
-            const resource = postDesc.match(RESOURCE_RE)
-            const action = postDesc.match(ACTION_BODY_RE)
+            // The page has exactly one realm-generated Resource block and one
+            // Status block. More than one means user text is formatted like them, and
+            // the action type cannot be attributed to either copy.
+            const actionUnverified = (data.match(/^##\s+Resource\s*-/gm)?.length ?? 0) > 1
+                || (data.match(/^##\s+Status\s+-/gm)?.length ?? 0) > 1
+            const resource = actionUnverified ? null : postDesc.match(RESOURCE_RE)
+            const action = actionUnverified ? null : postDesc.match(ACTION_BODY_RE)
             // Votes: only the realm-generated "## Votes" section (rendered
             // last, after every user-controlled region). A composite and/or
             // condition concatenates one tally block PER sub-condition, and a
@@ -624,6 +639,7 @@ export async function getProposalDetail(
                 proposer,
                 actionType: resource?.[1]?.trim() || undefined,
                 actionBody: action?.[1]?.trim() || undefined,
+                actionUnverified: actionUnverified || undefined,
                 createdAt: cachedRow?.createdAt,
             }
         }
@@ -638,17 +654,28 @@ export async function getProposalDetail(
 
         const status = parseLegacyDetailStatus(data, realmPath)
 
-        // Vote percentages
-        const yesPercentMatch = data.match(/YES\s+PERCENT:\s*(\d+)%/i)
-        const noPercentMatch = data.match(/NO\s+PERCENT:\s*(\d+)%/i)
+        // Vote percentages and counts. GovDAO renders them in its final
+        // "### Stats" section, after every user-authored field, so they are
+        // read only from there. Renders without that section (legacy basedao)
+        // take the last occurrence, which follows the description.
+        const statsHeading = matchLast(data, /^### Stats[ \t]*\r?$/m)
+        const statsRegion = statsHeading ? data.slice(statsHeading.index) : null
+        const tallySource = statsRegion ?? data
+        const pick = (re: RegExp) => statsRegion ? statsRegion.match(re) : matchLast(data, re)
+        const percent = (m: RegExpMatchArray | null): number => {
+            const v = m ? parseFloat(m[1]) : NaN
+            return Number.isFinite(v) && v >= 0 && v <= 100 ? Math.round(v * 100) / 100 : 0
+        }
+        const yesPercentMatch = pick(/YES\s+PERCENT:\s*(\d+(?:\.\d+)?)\s*%/i)
+        const noPercentMatch = pick(/NO\s+PERCENT:\s*(\d+(?:\.\d+)?)\s*%/i)
 
         // Tiers eligible to vote
         const tiersMatch = data.match(/Tiers?\s+eligible\s+to\s+vote:\s*([^\n]+)/i)
 
-        // Legacy: ** field format
-        const yesMatch = data.match(/\*\*Yes\*\*[:\s]+(\d+)/i)
-        const noMatch = data.match(/\*\*No\*\*[:\s]+(\d+)/i)
-        const abstainMatch = data.match(/\*\*Abstain\*\*[:\s]+(\d+)/i)
+        // Legacy: ** field format (never read from before a Stats section)
+        const yesMatch = statsRegion ? null : matchLast(tallySource, /\*\*Yes\*\*[:\s]+(\d+)/i)
+        const noMatch = statsRegion ? null : matchLast(tallySource, /\*\*No\*\*[:\s]+(\d+)/i)
+        const abstainMatch = statsRegion ? null : matchLast(tallySource, /\*\*Abstain\*\*[:\s]+(\d+)/i)
 
         // Category
         const categoryMatch = data.match(/Category:\s*(\w+)/i)
@@ -687,8 +714,8 @@ export async function getProposalDetail(
             tiers: tiersMatch
                 ? tiersMatch[1].split(",").map((t) => t.trim()).filter(Boolean)
                 : [],
-            yesPercent: yesPercentMatch ? parseInt(yesPercentMatch[1], 10) : 0,
-            noPercent: noPercentMatch ? parseInt(noPercentMatch[1], 10) : 0,
+            yesPercent: percent(yesPercentMatch),
+            noPercent: percent(noPercentMatch),
             yesVotes: yesMatch ? parseInt(yesMatch[1], 10) : 0,
             noVotes: noMatch ? parseInt(noMatch[1], 10) : 0,
             abstainVotes: abstainMatch ? parseInt(abstainMatch[1], 10) : 0,
@@ -730,6 +757,9 @@ export async function getProposalVotes(
     }
     if (!data) return []
 
+    const generated = parseGeneratedVoteList(data, id)
+    if (generated !== undefined) return generated
+
     const records: VoteRecord[] = []
 
     // Parse: "YES from T1 (VPPM 3):\n- @user\n- @user2\n\nNO from T1 (VPPM 3):"
@@ -761,4 +791,47 @@ export async function getProposalVotes(
     }
 
     return records
+}
+
+/**
+ * Parse the generated DAO template's vote list (Render("N/votes")):
+ *   "# Proposal #N - Vote List\n\nYES:\n- g1…\n\nNO:\n…\n\nABSTAIN:\n…"
+ * The page is entirely realm-generated (addresses only). Returns undefined
+ * when the page is not in this format, and [] when it is but fails validation.
+ */
+export function parseGeneratedVoteList(data: string, id: number): VoteRecord[] | undefined {
+    // Line-based on purpose: a single regex over the whole page backtracks
+    // exponentially on long runs of "- " lines.
+    const lines = data.replaceAll("\r\n", "\n").split("\n")
+    if (lines.length > 0 && lines[lines.length - 1] === "") lines.pop()
+    const header = /^# Proposal #(\d+) - Vote List$/.exec(lines[0] ?? "")
+    if (!header || lines[1] !== "" || lines[2] !== "YES:") return undefined
+    let i = 3
+    const bullets = (): string[] => {
+        const out: string[] = []
+        while (i < lines.length && lines[i].startsWith("- ")) out.push(lines[i++].slice(2))
+        return out
+    }
+    const yesLines = bullets()
+    if (lines[i] !== "" || lines[i + 1] !== "NO:") return undefined
+    i += 2
+    const noLines = bullets()
+    if (lines[i] !== "" || lines[i + 1] !== "ABSTAIN:") return undefined
+    i += 2
+    const abstainLines = bullets()
+    if (i !== lines.length) return undefined
+    if (Number(header[1]) !== id) return []
+    const voters = (addresses: string[]): VoterEntry[] | null => {
+        const out: VoterEntry[] = []
+        for (const address of addresses) {
+            if (!isValidGnoAddressChecksum(address)) return null
+            out.push({ username: address, profileUrl: "" })
+        }
+        return out
+    }
+    const yes = voters(yesLines), no = voters(noLines), abstain = voters(abstainLines)
+    if (!yes || !no || !abstain) return []
+    const all = [...yes, ...no, ...abstain].map((v) => v.username)
+    if (new Set(all).size !== all.length) return []
+    return [{ tier: "Members", vppm: 0, yesVoters: yes, noVoters: no, abstainVoters: abstain }]
 }

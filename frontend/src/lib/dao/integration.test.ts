@@ -16,11 +16,11 @@ import {
     _parseMembersFromRender,
     _normalizeStatus,
     GOVDAO_VOTE_FUNC,
-    GOVDAO_PROPOSE_FUNC,
-    buildVoteMsg,
-    buildProposeMsg,
-    isGovDAO,
+    GOVDAO_EXECUTE_FUNC,
+    buildDaoMsg,
+    isGovDAOPath as isGovDAO,
 } from "./index"
+import { bech32Encode } from "./realmAddress"
 
 // ── GovDAO v3 Render() format — full page sample ────────────────
 
@@ -151,16 +151,18 @@ describe("Memberstore tier parsing (real format)", () => {
 
 // ── Memba DAO (basedao) member format ────────────────────────────
 
+const V = (i: number) => bech32Encode("g", new Uint8Array(20).fill(i))
+
 const MEMBA_DAO_MEMBERS_V530 = `# MyDAO
 
 A community governance DAO.
 
 ## Members (5)
-- g1creator12345678901234567890123456 (roles: admin, dev) | power: 3
-- g1member1234567890123456789012345a (roles: dev) | power: 2
-- g1member1234567890123456789012345b (roles: member) | power: 1
-- g1member1234567890123456789012345c (roles: finance, ops) | power: 2
-- g1member1234567890123456789012345d (roles: member) | power: 1
+- ${V(1)} (roles: admin, dev) | power: 3
+- ${V(2)} (roles: dev) | power: 2
+- ${V(3)} (roles: member) | power: 1
+- ${V(4)} (roles: finance, ops) | power: 2
+- ${V(5)} (roles: member) | power: 1
 `
 
 describe("Memba DAO member parsing (v5.3.0 format)", () => {
@@ -224,28 +226,15 @@ describe("GovDAO function name constants", () => {
         expect(GOVDAO_VOTE_FUNC).toBe("MustVoteOnProposalSimple")
     })
 
-    it("GOVDAO_PROPOSE_FUNC is Propose", () => {
-        expect(GOVDAO_PROPOSE_FUNC).toBe("Propose")
+    it("buildDaoMsg uses the GovDAO functions for GovDAO", () => {
+        const caller = "g1manfred47kzduec920z88wfr64ylksmdcedlf5"
+        expect(buildDaoMsg("govdao", "gno.land/r/gov/dao", { type: "vote", id: 1, vote: "YES" }, caller).value.func).toBe(GOVDAO_VOTE_FUNC)
+        expect(buildDaoMsg("govdao", "gno.land/r/gov/dao", { type: "execute", id: 1 }, caller).value.func).toBe(GOVDAO_EXECUTE_FUNC)
     })
 
-    it("buildVoteMsg uses GOVDAO_VOTE_FUNC for GovDAO paths", () => {
-        const msg = buildVoteMsg("g1caller", "gno.land/r/gov/dao", 1, "YES")
-        expect(msg.value.func).toBe(GOVDAO_VOTE_FUNC)
-    })
-
-    it("buildVoteMsg uses VoteOnProposal for Memba DAOs", () => {
-        const msg = buildVoteMsg("g1caller", "gno.land/r/samcrew/mydao", 1, "YES")
+    it("buildDaoMsg uses VoteOnProposal for version-1 Memba DAOs", () => {
+        const msg = buildDaoMsg("memba-v1", "gno.land/r/samcrew/mydao", { type: "vote", id: 1, vote: "YES" }, "g1manfred47kzduec920z88wfr64ylksmdcedlf5")
         expect(msg.value.func).toBe("VoteOnProposal")
-    })
-
-    it("buildProposeMsg for GovDAO omits category arg", () => {
-        const msg = buildProposeMsg("g1caller", "gno.land/r/gov/dao", "Title", "Desc")
-        expect(msg.value.args).toEqual(["Title", "Desc"])
-    })
-
-    it("buildProposeMsg for Memba DAO includes category arg", () => {
-        const msg = buildProposeMsg("g1caller", "gno.land/r/samcrew/dao", "Title", "Desc", "treasury")
-        expect(msg.value.args).toEqual(["Title", "Desc", "treasury"])
     })
 })
 
@@ -256,12 +245,13 @@ describe("isGovDAO path detection (comprehensive)", () => {
         expect(isGovDAO("gno.land/r/gov/dao")).toBe(true)
     })
 
-    it("detects versioned GovDAO path", () => {
-        expect(isGovDAO("gno.land/r/gov/dao/v3")).toBe(true)
+    it("rejects versioned and sub-paths (exact match only)", () => {
+        expect(isGovDAO("gno.land/r/gov/dao/v3")).toBe(false)
+        expect(isGovDAO("gno.land/r/gov/dao/v3/memberstore")).toBe(false)
     })
 
-    it("detects GovDAO with subpath", () => {
-        expect(isGovDAO("gno.land/r/gov/dao/v3/memberstore")).toBe(true)
+    it("rejects lookalike paths in another namespace", () => {
+        expect(isGovDAO("gno.land/r/alice/gov/dao")).toBe(false)
     })
 
     it("rejects user DAOs", () => {

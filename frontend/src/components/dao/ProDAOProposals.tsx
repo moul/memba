@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import { useNetworkPath } from "../../hooks/useNetworkNav"
 import type { DAOProposal } from "../../lib/dao"
+import { downloadProposalsCsv } from "../../lib/dao/proposalsCsv"
 
 const filters = ["All", "Open for voting", "Awaiting execution", "History"] as const
 type Filter = typeof filters[number]
@@ -20,7 +21,10 @@ export function ProDAOProposals({ encodedSlug, proposals, loading, failed, retry
     return <section id="dao-proposals-section" className="gov-proposals" aria-labelledby="gov-proposals-title" aria-busy={loading}>
         <div className="gov-section-header">
             <div><h3 id="gov-proposals-title">Proposals</h3><p>Follow decisions from discussion to execution.</p></div>
-            {canPropose && <Link className="k-btn-primary" to={path(`dao/${encodedSlug}/propose`)}>New proposal</Link>}
+            <div className="gov-section-actions">
+                {shown.length > 0 && <button type="button" className="k-btn-secondary" onClick={() => downloadProposalsCsv(encodedSlug, shown)}>Export CSV</button>}
+                {canPropose && <Link className="k-btn-primary" to={path(`dao/${encodedSlug}/propose`)}>New proposal</Link>}
+            </div>
         </div>
         <div className="gov-list-toolbar">
             <div className="gov-filters" role="group" aria-label="Filter proposals by status">
