@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { GNO_CHAIN_ID } from "../config"
 import { directRpcCall, resilientAbciQuery } from "../rpcFallback"
 import { encodeBech32 } from "../templates/dao/v2/bech32"
 import { resolveDaoKind } from "./kind"
@@ -45,7 +46,8 @@ beforeEach(() => {
     // except for username lookups on the user registry.
     vi.mocked(resilientAbciQuery).mockResolvedValue(null)
     vi.mocked(directRpcCall).mockImplementation(async (_url, method, params) => {
-        if (method === "status") return { node_info: { network: "pearl-1" } }
+        // The node reports the chain the app is on, whichever network is the default.
+        if (method === "status") return { node_info: { network: GNO_CHAIN_ID } }
         const full = new TextDecoder().decode(Uint8Array.from(params!.data.slice(2).match(/../g)!, (h) => parseInt(h, 16)))
         const expression = full.slice(REALM.length + 1)
         expressions.push(expression)

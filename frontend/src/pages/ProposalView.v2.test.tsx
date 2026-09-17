@@ -54,6 +54,8 @@ vi.mock("../lib/dao", async (orig) => ({
 }))
 
 import { ProposalView } from "./ProposalView"
+import { GNO_CHAIN_ID } from "../lib/config"
+import { txExplorerUrl } from "../lib/txExplorerUrl"
 
 function proposal(overrides: Partial<MembaV2Proposal> = {}): MembaV2Proposal {
     return {
@@ -114,7 +116,9 @@ describe("version-2 proposal reader", () => {
             "Vote YES on proposal #2",
             { gasWanted: 15_000_000, retry: false },
         )
-        expect(screen.getByRole("link", { name: HASH })).toBeInTheDocument()
+        // The hash links to the explorer only on chains it indexes; elsewhere it is plain text.
+        if (txExplorerUrl(HASH, GNO_CHAIN_ID)) expect(screen.getByRole("link", { name: HASH })).toBeInTheDocument()
+        else expect(screen.getByText(HASH)).toBeInTheDocument()
     })
 
     it("does not offer a second vote", async () => {
