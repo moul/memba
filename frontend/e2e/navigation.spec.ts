@@ -100,17 +100,19 @@ test.describe('TopBar (Desktop)', () => {
         await expect(versionBadge).toContainText(/v\d+/)
     })
 
-    test('network selector offers Pearl and Betanet — retired networks stay out', async ({ page }) => {
+    test('network selector offers gno.land and Pearl — retired networks stay out', async ({ page }) => {
         await page.goto('/')
         const selector = page.getByTestId('topbar').getByRole('combobox', { name: 'Switch network', exact: true })
         await expect(selector).toBeVisible()
-        // 2026-09-09 sunset contract: Pearl is the default, Betanet stays
-        // offered (its F-28 fail-open and F-29 dead-session loop are fixed and
-        // pinned in config.test.ts), and Sapphire has joined the retired set —
-        // hidden from the selector like Topaz/test13, still resolvable by deep
-        // link so stored selections heal instead of stranding.
-        await expect(selector).toContainText(/Pearl/)
-        await expect(selector.locator('option', { hasText: /Betanet/ })).toHaveCount(1)
+        // 2026-09-17 contract: gno.land (mainnet, `gnoland-1`) is the default
+        // and Pearl stays offered as the testnet with Memba's realms on it.
+        // Betanet joined Sapphire/Topaz/test13 in the retired set — every
+        // public gnoland1 endpoint stopped answering — hidden from the
+        // selector, still resolvable by deep link so stored selections heal
+        // instead of stranding.
+        await expect(selector).toContainText(/gno\.land/)
+        await expect(selector.locator('option', { hasText: /Pearl/ })).toHaveCount(1)
+        await expect(selector.locator('option', { hasText: /Betanet/ })).toHaveCount(0)
         await expect(selector.locator('option', { hasText: /Sapphire/ })).toHaveCount(0)
         await expect(selector.locator('option', { hasText: /Topaz/ })).toHaveCount(0)
     })

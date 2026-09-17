@@ -20,6 +20,13 @@ Full changelogs are split by version range for easier navigation:
 
 ## [Unreleased]
 
+### gno.land is the default network, and Betanet is retired (2026-09-17)
+<!-- categories: memba, network -->
+- **Opening Memba now lands you on gno.land (`gnoland-1`), the production chain, instead of the Pearl testnet.** Anyone who picked a network before keeps the one they picked; only people who never chose are moved. Pearl stays in the network picker and is unchanged, and every `/pearl/...` link keeps working.
+- **What gno.land offers today:** GovDAO and DAOs deployed by their members, validators, chain health, tokens and the directory. Memba's own realms (channels, candidature, feed, quests, marketplace) are not deployed there yet, so those surfaces show the existing "not on gno.land yet" notice and DAO creation still points you at a network that supports it. The activity feed, the home snapshot and the social feed stay scoped to Pearl, where the indexer runs.
+- **Betanet (`gnoland1`) left the network picker.** Every public Betanet endpoint stopped answering: its main RPC, both public fallbacks and its explorer. Existing `/gnoland1/...` links still open, and a saved Betanet selection now moves you to gno.land instead of parking you on a chain with no working endpoint. Betanet joins Sapphire, Topaz and Testnet 13 in the retired set.
+- **Two stale chain names were removed from the code.** The chain id used when no network could be resolved still read `topaz-1`, a chain decommissioned on 2026-08-12, and the Docker Compose dev stack still defaulted to `sapphire`, sunset on 2026-09-09. Both now follow the configured network instead of naming a dead one.
+
 ### DAO pages show only what each DAO supports (2026-09-17)
 <!-- categories: memba, network -->
 - **DAO pages recognise the kind of DAO contract before offering actions.** GovDAO is identified by its exact realm path; DAOs created with Memba are identified by the version they report. Vote, execute and proposal buttons, the New Proposal page and Quick Vote appear only where Memba can build a transaction the contract accepts, and only for members. GovDAO is vote and execute only; other DAO frameworks and unrecognised contracts are read-only.

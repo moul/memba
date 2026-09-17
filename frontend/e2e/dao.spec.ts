@@ -43,7 +43,7 @@ import { MOBILE_375, expectNoMobileOverflow } from './helpers/overflow'
  * hub's per-DAO resolution reads and the members page's detail reads settle
  * as null/[] and render their deterministic fallbacks.
  */
-async function fulfillGovDaoHome(page: Page) {
+async function fulfillGovDaoHome(page: Page, chainId?: string) {
     const GOVDAO_RENDER = [
         '# GovDAO',
         '',
@@ -73,7 +73,7 @@ async function fulfillGovDaoHome(page: Page) {
         if (path === 'vm/qrender' && arg === 'gno.land/r/gov/dao/v3/memberstore:') return MEMBERSTORE_RENDER
         // A version-1 generated DAO: identified by its API version, so the propose page is offered.
         if (path === 'vm/qeval' && arg === `${V1_DAO}.GetAPIVersion()`) return '("1.0" string)'
-        if (method === 'status') return mockAppChainStatus()
+        if (method === 'status') return chainId ? mockAppChainStatus(chainId) : mockAppChainStatus()
         return null
     })
 }
@@ -92,8 +92,22 @@ test.describe('DAO Hub', () => {
         await expect(page.locator('body')).toContainText(/GovDAO|Governance/)
     })
 
-    test('Create DAO CTA visible', async ({ page }) => {
+    test('Create DAO CTA follows the network — offered on pearl, absent on the gno.land default', async ({ page }) => {
+        // `userDaos.create` is PER-NETWORK: pearl supports DAO creation,
+        // gno.land does not yet (#1223 — the Create DAO page says so there).
+        // This spec read as "the hub has a static Create CTA"; it was always
+        // the network capability, and the 2026-09-17 mainnet default is what
+        // made the two distinguishable. Both halves are asserted so neither
+        // direction can rot silently.
         await page.goto('/dao')
+        await expect(page.getByRole('heading', { name: /DAO Governance/ })).toBeVisible()
+        await expect(page.locator('body')).not.toContainText(/Create a DAO|New DAO/)
+
+        // Re-register the fixture with pearl's chain id: DAO reads identity-check
+        // the RPC against the selected network (#1222), and Playwright matches
+        // routes in reverse registration order, so this handler wins.
+        await fulfillGovDaoHome(page, 'pearl-1')
+        await page.goto('/pearl/dao')
         await expect(page.locator('body')).toContainText(/Create|New DAO/)
     })
 

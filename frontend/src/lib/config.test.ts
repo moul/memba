@@ -168,12 +168,15 @@ describe('config constants', () => {
         }
     })
 
-    it('pearl is both a valid default key AND the hard fallback', () => {
-        // The fallback tracks the current default chain: stranding a
-        // misconfigured build on sapphire would park users on a network
-        // sunsetting 2026-09-09.
+    it('mainnet is both a valid default key AND the hard fallback', () => {
+        // The fallback tracks the current default chain. Every value it has
+        // held so far has been a TESTNET that later died (test13, topaz,
+        // sapphire), stranding misconfigured builds each time; `gnoland-1` is
+        // the production chain and the only entry with no end of life.
+        expect(resolveDefaultNetwork('mainnet')).toBe('mainnet')
+        expect(resolveDefaultNetwork(undefined)).toBe('mainnet')
+        // pearl stays a perfectly valid pin — it is just no longer the default.
         expect(resolveDefaultNetwork('pearl')).toBe('pearl')
-        expect(resolveDefaultNetwork(undefined)).toBe('pearl')
     })
 
     it('test13 points at the official testnets.gno.land RPC', () => {
@@ -228,9 +231,9 @@ describe('config constants', () => {
         expect(g1.faucetUrl).toBe('')
     })
 
-    it('DEFAULT_NETWORK is pearl (2026-08-27 flip; env-less builds use the fallback)', () => {
+    it('DEFAULT_NETWORK is mainnet (2026-09-17 flip; env-less builds use the fallback)', () => {
         expect(DEFAULT_NETWORK).toBe(resolveDefaultNetwork(import.meta.env.VITE_GNO_CHAIN_ID))
-        expect(resolveDefaultNetwork(undefined)).toBe('pearl')
+        expect(resolveDefaultNetwork(undefined)).toBe('mainnet')
     })
 
     it('getUserRegistryPath returns r/sys/users for the default network', () => {
@@ -272,23 +275,31 @@ describe('NFT v3 market gating (gate the page on the engine it trades)', () => {
         expect(isRealmValidOn('test13', NFT_MARKETPLACE_PATH)).toBe(true)
     })
 
-    it('isNftMarketV3Valid() is true on the default network — the pearl combined ceremony shipped v3.2', () => {
-        // Flipped by the §6 completion PR, per this test's own instruction:
-        // the pearl combined ceremony deploys + registers memba_nft_market_v3_2
-        // and the allowlist entry is realm-versions-backed. The trade surface
-        // still ALSO requires VITE_ENABLE_NFT (owner flips after the 2-wallet
-        // live-money test), so prod visibility remains a second, separate gate.
-        expect(isNftMarketV3Valid()).toBe(true)
+    it('the v3.2 market is live on pearl and gated on the mainnet default', () => {
+        // Was 'true on the default network'. The 2026-09-17 mainnet flip broke
+        // that phrasing's hidden assumption — "default network" and "the chain
+        // our realms are on" stopped being the same thing. Pinned to the KEY
+        // now, which is what the claim was always about: the pearl combined
+        // ceremony deploys + registers memba_nft_market_v3_2 with a
+        // realm-versions-backed allowlist entry. The trade surface still ALSO
+        // requires VITE_ENABLE_NFT, so prod visibility is a second gate.
+        expect(isRealmValidOn('pearl', NFT_MARKETPLACE_V3_PATH)).toBe(true)
+        // …and gated on mainnet, where nothing of ours is deployed. The
+        // env-dependent predicate follows whichever network the build pins.
+        expect(isRealmValidOn('mainnet', NFT_MARKETPLACE_V3_PATH)).toBe(false)
+        expect(isNftMarketV3Valid()).toBe(isRealmValidOn(DEFAULT_NETWORK, NFT_MARKETPLACE_V3_PATH))
     })
 
     it('v2 and v3 are distinct predicates (the bug was gating v3 trading on the v2 predicate)', () => {
-        // The distinctness assertion is now LIVE, not vacuous: on pearl v3.2
-        // is deployed and v2 is not, so the two predicates genuinely diverge —
-        // exactly the situation the original bug (gating v3 trading on the v2
-        // predicate) would have broken. Both remain allowlisted on retired
-        // test13.
+        // The distinctness assertion is LIVE, not vacuous: on pearl v3.2 is
+        // deployed and v2 is not, so the two genuinely diverge — exactly the
+        // situation the original bug (gating v3 trading on the v2 predicate)
+        // would have broken. Asserted on the pearl KEY rather than through the
+        // env-dependent predicates, which now follow a realm-free default.
+        // Both remain allowlisted on retired test13.
+        expect(isRealmValidOn('pearl', NFT_MARKETPLACE_PATH)).toBe(false)
+        expect(isRealmValidOn('pearl', NFT_MARKETPLACE_V3_PATH)).toBe(true)
         expect(isNftMarketValid()).toBe(false)
-        expect(isNftMarketV3Valid()).toBe(true)
         expect(isRealmValidOn('test13', NFT_MARKETPLACE_PATH)).toBe(true)
         expect(isRealmValidOn('test13', NFT_MARKETPLACE_V3_PATH)).toBe(true)
     })
@@ -548,7 +559,7 @@ describe('network reduction — test13 + topaz + gnoland1 + sapphire + pearl + m
     // infinite-looped (/test12/test12/…) until the browser throttled replaceState and
     // the app crashed (mobile / private browsing, where localStorage can't override it).
     it('resolveDefaultNetwork falls back to a valid network for a removed env value', () => {
-        expect(resolveDefaultNetwork('test12')).toBe('pearl')
+        expect(resolveDefaultNetwork('test12')).toBe('mainnet')
         expect(NETWORKS[resolveDefaultNetwork('test12')]).toBeDefined()
     })
     it('resolveDefaultNetwork passes through a valid env network; falls back when empty', () => {
@@ -558,8 +569,8 @@ describe('network reduction — test13 + topaz + gnoland1 + sapphire + pearl + m
         // (.env.e2e → test13). See resolveDefaultNetwork's doc before "fixing".
         expect(resolveDefaultNetwork('gnoland1')).toBe('gnoland1')
         expect(resolveDefaultNetwork('test13')).toBe('test13')
-        expect(resolveDefaultNetwork(undefined)).toBe('pearl')
-        expect(resolveDefaultNetwork('')).toBe('pearl')
+        expect(resolveDefaultNetwork(undefined)).toBe('mainnet')
+        expect(resolveDefaultNetwork('')).toBe('mainnet')
     })
     it('DEFAULT_NETWORK is always a valid NETWORKS entry (never crash-loops)', () => {
         expect(NETWORKS[DEFAULT_NETWORK]).toBeDefined()
@@ -635,12 +646,13 @@ describe('retired networks stay DARK but resolvable (topaz 2026-08-12, test13 20
     it('topaz is hidden, never the default, but resolves and remains escapable', () => {
         expect(NETWORKS.topaz.hidden).toBe(true)
         expect(Object.keys(VISIBLE_NETWORKS)).not.toContain('topaz')
-        expect(resolveDefaultNetwork(undefined)).toBe('pearl')
-        expect(resolveDefaultNetwork('')).toBe('pearl')
+        expect(resolveDefaultNetwork(undefined)).toBe('mainnet')
+        expect(resolveDefaultNetwork('')).toBe('mainnet')
         // selectableNetworksFor always prepends the ACTIVE network, so a topaz
         // deep-link visitor still has an option list and a way out.
         const selectable = Object.keys(selectableNetworksFor('topaz'))
         expect(selectable).toContain('topaz')
+        expect(selectable).toContain('mainnet')
         expect(selectable).toContain('pearl')
     })
 
@@ -650,11 +662,30 @@ describe('retired networks stay DARK but resolvable (topaz 2026-08-12, test13 20
         expect(networkHasRealms('topaz')).toBe(true)
     })
 
-    it('gnoland1 still exercises the realms-free dark shape (the F-28 machinery)', () => {
-        // The empty-allowlist + realmsDeployed:false combination must stay
-        // covered by a live example: selectable again since 2026-08-27, but
-        // it gates everything and shows the honest banner.
-        expect(NETWORKS.gnoland1.hidden).toBe(false)
+    it('gnoland1 is hidden after its 2026-09-17 retirement, but still resolves', () => {
+        // Every PUBLIC Betanet endpoint measured dead on 2026-09-17 (primary
+        // rpc.gnoland1.samourai.live, the aeddi + testnets.gno.land
+        // fallbacks, and the betanet.testnets.gno.land explorer); only one
+        // community node still answers. Same treatment as test13 / topaz /
+        // sapphire — hidden from the selector, kept in NETWORKS so deep links
+        // and stored selections resolve instead of crash-looping.
+        expect(NETWORKS.gnoland1.hidden).toBe(true)
+        expect(Object.keys(VISIBLE_NETWORKS)).not.toContain('gnoland1')
+        expect(NETWORKS.gnoland1).toBeDefined()
+    })
+
+    it('mainnet now carries the realms-free VISIBLE shape (the F-28 machinery)', () => {
+        // The empty-allowlist + realmsDeployed:false + visible combination must
+        // stay covered by a LIVE example, or the machinery that shows the
+        // honest banner instead of a fake-live marketplace stops being
+        // exercised. gnoland1 played that role from 2026-08-27 until it was
+        // hidden; mainnet plays it now — and as the DEFAULT network, which
+        // makes it the strongest possible coverage of the shape.
+        expect(NETWORKS.mainnet.hidden).toBe(false)
+        expect(networkHasRealms('mainnet')).toBe(false)
+        expect(isRealmValidOn('mainnet', 'gno.land/r/samcrew/memba_dao')).toBe(false)
+        // gnoland1 keeps the gating while hidden — a hidden network is still
+        // reachable by deep link, so its gates must not relax.
         expect(networkHasRealms('gnoland1')).toBe(false)
         expect(isRealmValidOn('gnoland1', 'gno.land/r/samcrew/memba_dao')).toBe(false)
     })
@@ -718,12 +749,16 @@ describe('FEED_INDEXED_NETWORK — drift tripwire', () => {
         // If you are INTENTIONALLY cutting over: move the backend's FEED_RPC_URL
         // in the same window, update FEED_INDEXED_NETWORK here, and reset the
         // indexer cursor. If you are not, this failure is the bug.
-        // The transitional divergence (2026-08-27 → the pearl ceremony) is
-        // OVER: the §6 completion release moved FEED_RPC_URL +
-        // FEED_START_BLOCK and reset the indexer cursor in the same window as
-        // this flip, so the strict form is restored — exactly as the
-        // transitional comment instructed.
-        expect(FEED_INDEXED_NETWORK).toBe(DEFAULT_NETWORK)
+        // The transitional divergence (2026-08-27 → the pearl ceremony) was
+        // OVER, and the strict form held until the 2026-09-17 mainnet default
+        // flip re-opened it — under the SAME legitimacy rule the branch below
+        // states: the default's realms are dark (`realmsDeployed: false` on
+        // mainnet — gno.land/r/samcrew/memba_dao 404s), so there is nothing to
+        // post to there and nothing for the backend to index. The feed stays
+        // on pearl with the backend's FEED_RPC_URL, which did NOT move: this
+        // flip is additive, not a chain cut, so there was no secret window and
+        // no cursor reset. The branch below re-tightens automatically the day
+        // Memba's realms ship on gnoland-1.
         const { NETWORKS: nets } = await import('./config')
         // The feed's network must stay REACHABLE while the divergence lasts —
         // hidden-but-indexed would disable posting for everyone with no path.
@@ -829,10 +864,10 @@ describe('isTestnetNetwork — drives the Team Hub mainnet-data disclosure', () 
 })
 
 describe('Betanet gating — fails CLOSED, not open (F-28)', () => {
-    it('gnoland1 is offered in the selector again (2026-08-27, future-mainnet track)', async () => {
+    it('gnoland1 left the selector (2026-09-17: every public endpoint dead) but still resolves', async () => {
         const { VISIBLE_NETWORKS, NETWORKS } = await import('./config')
-        expect(NETWORKS.gnoland1).toBeDefined()
-        expect(VISIBLE_NETWORKS.gnoland1).toBeDefined() // selectable — the gates below stay closed
+        expect(NETWORKS.gnoland1).toBeDefined() // deep links + stored keys resolve
+        expect(VISIBLE_NETWORKS.gnoland1).toBeUndefined() // not offered any more
     })
 
     it('gnoland1 declares its realms are NOT deployed, so the banner fires', async () => {
@@ -1008,9 +1043,13 @@ describe('resolveStoredNetworkKey — hiding a network must not strand anyone', 
         }
     })
 
-    it('restores a stored Betanet selection now that it is visible again', async () => {
-        const { resolveStoredNetworkKey } = await import('./config')
-        expect(resolveStoredNetworkKey('gnoland1')).toBe('gnoland1')
+    it('heals a stored Betanet selection away now that it is hidden again', async () => {
+        // The other half of the loop above: a returning Betanet user is moved
+        // to the default rather than parked on a chain the selector no longer
+        // offers. The deep-link path (a `/gnoland1/...` URL) still resolves —
+        // that is resolveNetworkKey's job, not this one's.
+        const { resolveStoredNetworkKey, DEFAULT_NETWORK: dn } = await import('./config')
+        expect(resolveStoredNetworkKey('gnoland1')).toBe(dn)
     })
 
     it('keeps a stored VISIBLE network', async () => {

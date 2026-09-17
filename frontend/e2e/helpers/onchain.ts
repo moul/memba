@@ -161,7 +161,19 @@ export async function fulfillOnchainReads(
  * DAO fixtures must report the app's chain (the default network, pearl-1,
  * unless E2E_CHAIN_ID says otherwise).
  */
-export function mockAppChainStatus(chainId = process.env.E2E_CHAIN_ID || 'pearl-1'): object {
+/**
+ * `/status` as the APP's own chain — the identity check DAO reads run before
+ * trusting an RPC endpoint (#1222). The default must track the network the
+ * spec actually lands on, which for a bare `page.goto('/dao')` is
+ * DEFAULT_NETWORK: `gnoland-1` since the 2026-09-17 mainnet flip (`pearl-1`
+ * before it). A stale default here does not fail loudly — the identity check
+ * simply skips every read and the page renders empty, which reads as a UI
+ * regression rather than a fixture mismatch.
+ *
+ * ⚠️ Specs that drive an EXPLICIT `/{network}/...` prefix must pass the
+ * matching chain id rather than relying on this default.
+ */
+export function mockAppChainStatus(chainId = process.env.E2E_CHAIN_ID || 'gnoland-1'): object {
     const base = mockChainStatus() as { node_info: Record<string, unknown> }
     return { ...base, node_info: { ...base.node_info, network: chainId } }
 }

@@ -61,15 +61,16 @@ const networkOf = (path: string) => path.match(/^\/([^/]+)\//)?.[1]
 describe("LegacyRedirect — bookmarks must heal like / does", () => {
     afterEach(() => localStorage.removeItem("memba_network"))
 
-    it("keeps a Betanet bookmark now that gnoland1 is visible again (2026-08-27)", () => {
-        // The old regression was pinning bookmarks to a HIDDEN network; the
-        // rule under test is "stored keys heal off hidden networks only".
-        // gnoland1 left the hidden set, so a stored selection legitimately
-        // sticks — the hidden-healing property stays covered by the
-        // every-stored-value sweep below (test13/topaz).
+    it("heals a Betanet bookmark away now that gnoland1 is hidden again (2026-09-17)", () => {
+        // The rule under test is "stored keys heal off hidden networks only".
+        // gnoland1 was visible 2026-08-27 → 2026-09-17 and a stored selection
+        // legitimately stuck; it is retired to hidden again (every public
+        // Betanet endpoint dead), so the healing side is what this asserts.
+        // A stored key that stayed VISIBLE is covered by "keeps a stored
+        // VISIBLE network" below.
         localStorage.setItem("memba_network", "gnoland1")
         const landed = renderLegacy("/directory")
-        expect(networkOf(landed)).toBe("gnoland1")
+        expect(networkOf(landed)).toBe(DEFAULT_NETWORK)
     })
 
     it("lands on the SAME network as RootRedirect for every stored value", () => {
@@ -88,9 +89,9 @@ describe("LegacyRedirect — bookmarks must heal like / does", () => {
         }
     })
 
-    it("RootRedirect restores a stored Betanet selection (visible again)", () => {
+    it("RootRedirect heals a stored Betanet selection away (hidden again)", () => {
         localStorage.setItem("memba_network", "gnoland1")
-        expect(networkOf(renderRoot())).toBe("gnoland1")
+        expect(networkOf(renderRoot())).toBe(DEFAULT_NETWORK)
     })
 
     it("keeps a stored VISIBLE network", () => {
@@ -130,17 +131,22 @@ describe("Redirects — an explicit choice outranks the URL echo", () => {
     })
 
     it("sends / and a bookmark to the chosen network, not the last one visited", () => {
-        localStorage.setItem("memba_network", "pearl")
-        localStorage.setItem("memba_network_pref", "gnoland1")
-        expect(networkOf(renderRoot())).toBe("gnoland1")
-        expect(networkOf(renderLegacy("/directory"))).toBe("gnoland1")
+        // Both values must name VISIBLE networks or the case proves nothing:
+        // a hidden pref heals away and would land on the echo for the wrong
+        // reason. gnoland1 played the "chosen" role until it was hidden on
+        // 2026-09-17; pearl takes it, with mainnet (the default) as the echo.
+        localStorage.setItem("memba_network", "mainnet")
+        localStorage.setItem("memba_network_pref", "pearl")
+        expect(networkOf(renderRoot())).toBe("pearl")
+        expect(networkOf(renderLegacy("/directory"))).toBe("pearl")
     })
 
     it("never restores a chosen network that has since been hidden", () => {
-        localStorage.setItem("memba_network", "gnoland1")
+        // pref is hidden → it must NOT win; the visible echo answers instead.
+        localStorage.setItem("memba_network", "pearl")
         localStorage.setItem("memba_network_pref", "sapphire")
-        expect(networkOf(renderRoot())).toBe("gnoland1")
-        expect(networkOf(renderLegacy("/directory"))).toBe("gnoland1")
+        expect(networkOf(renderRoot())).toBe("pearl")
+        expect(networkOf(renderLegacy("/directory"))).toBe("pearl")
     })
 
     it("/ and a bookmark agree for every stored choice", () => {

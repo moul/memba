@@ -313,7 +313,12 @@ export const NETWORKS: Record<string, NetworkConfig> = {
         // matches the RPC (it served the frozen sapphire height for ~4h after
         // launch — identity-check indexers like RPCs).
         //
-        // Visible AND the default network since 2026-08-27; realm-dependent
+        // Visible since 2026-08-27, and the DEFAULT network 2026-08-27 →
+        // 2026-09-17 (mainnet took over — see the `mainnet` entry). Pearl
+        // remains the chain Memba's own realms are deployed on, which is why
+        // SNAPSHOT_NETWORK / FEED_INDEXED_NETWORK / INDEXER_PROXIED_NETWORK
+        // and SITEMAP_NETWORK all still name it: those pin CONTENT, not the
+        // landing network. Realm-dependent
         // surfaces stay behind `realmsDeployed: false` (honest
         // RealmsNotDeployedBanner) until the combined ceremony. Auth is
         // fail-closed regardless: a pearl-1 token is refused until the owner
@@ -367,7 +372,24 @@ export const NETWORKS: Record<string, NetworkConfig> = {
         label: "Betanet (gnoland1)",
         userRegistryPath: "gno.land/r/sys/users",
         faucetUrl: "",
-        // SELECTABLE again since 2026-08-27 (owner directive: keep Betanet
+        // ⛔ RETIRED to HIDDEN (2026-09-17): every PUBLIC Betanet endpoint in
+        // this entry is dead. Measured the same day, all four:
+        //     rpc.gnoland1.samourai.live      → connection refused
+        //     rpc.gnoland1.aeddi.org          → empty response
+        //     rpc.betanet.testnets.gno.land   → connection refused
+        //     betanet.testnets.gno.land       → connection refused (explorer)
+        // Only `rpc.gnoland1.moul.p2p.team` still answers (node_info.network
+        // "gnoland1", height 3796411, catching_up false) — one community node
+        // is not an offer this app should make in the selector, and the
+        // PRIMARY being dead means a Betanet visitor lands on a failover, not
+        // on the endpoint the app advertises. Same treatment as test13 /
+        // topaz / sapphire: the entry STAYS in NETWORKS so deep links and
+        // stored selections resolve instead of crash-looping the /:network
+        // redirects, and `selectableNetworksFor` keeps the escape hatch.
+        // Re-verify with `node_info.network == "gnoland1"` before un-hiding;
+        // DNS and a 200 prove nothing (the pearl/rpc.gno.land lesson).
+        //
+        // SELECTABLE 2026-08-27 → 2026-09-17 (owner directive: keep Betanet
         // offered alongside Pearl).
         //
         // ⛔ RETRACTED 2026-09-10 — the original directive called gnoland1 "the
@@ -393,7 +415,7 @@ export const NETWORKS: Record<string, NetworkConfig> = {
         //   attempt here gets a clean surfaced refusal, not a dead session.
         // Memba still deploys NOTHING to Betanet; realm-dependent surfaces stay
         // honestly gated.
-        hidden: false,
+        hidden: true,
         realmsDeployed: false,
         // Live-verified 2026-07-31: serves `<meta name="chainid" content="gnoland1">`,
         // i.e. this really is Betanet's gnoweb. Both previous values were wrong in
@@ -491,6 +513,25 @@ export const NETWORKS: Record<string, NetworkConfig> = {
         // reachable RPC prove nothing — rpc.gno.land served betanet right up
         // to genesis, and at genesis it answered 504 while its own node sat at
         // height 0. `samcrew-mainnet-check.sh mainnet` is the check.
+        //
+        // DEFAULT NETWORK since 2026-09-17 (netlify.toml VITE_GNO_CHAIN_ID +
+        // the `resolveDefaultNetwork` hard fallback). Re-verified at the flip:
+        // rpc.gno.land reports node_info.network "gnoland-1" at height 112761,
+        // and gno.land's gnoweb serves `<meta name="gnoconnect:chainid"
+        // content="gnoland-1">` (NOTE: the meta NAME changed — it is
+        // `gnoconnect:chainid` now, not the bare `chainid` this file's older
+        // notes tell you to grep for; a `chainid` grep returns nothing and
+        // reads as "wrong chain").
+        //
+        // ⚠️ What defaulting here does NOT change: `realmsDeployed` stays
+        // false (gno.land/r/samcrew/memba_dao → 404, re-checked 2026-09-17),
+        // so the landing page is the honest RealmsNotDeployedBanner plus the
+        // realm-free lanes — DAOs (GovDAO and member-deployed), Validators,
+        // Tokens, Directory, chain health. The three backend-pinned constants
+        // (SNAPSHOT_NETWORK / FEED_INDEXED_NETWORK / INDEXER_PROXIED_NETWORK)
+        // deliberately STAY on pearl and self-disable here — they track Fly
+        // secrets, not the landing network, and moving them without the
+        // secrets is the partial-cutover failure this repo keeps re-learning.
         hidden: false,
         realmsDeployed: false,
         // NOT a testnet — this is the production chain. Drives the disclosures
@@ -592,10 +633,13 @@ export function selectableNetworksFor(activeKey: string): Record<string, Network
  * here without moving that e2e contract first.
  */
 export function resolveDefaultNetwork(envKey: string | undefined): string {
-    // The hard fallback tracks the CURRENT default chain (pearl since
-    // 2026-08-27) — falling back to a sunsetting chain would strand a
-    // misconfigured build on a network scheduled to die (sapphire: 09-09).
-    return envKey && NETWORKS[envKey] ? envKey : "pearl"
+    // The hard fallback tracks the CURRENT default chain (mainnet since
+    // 2026-09-17; pearl 08-27 → 09-17) — falling back to a sunsetting chain
+    // would strand a misconfigured build on a network scheduled to die
+    // (sapphire: 09-09), and every testnet this app has defaulted to so far
+    // has eventually been one. `gnoland-1` is the production chain: it is the
+    // one entry here with no announced end of life.
+    return envKey && NETWORKS[envKey] ? envKey : "mainnet"
 }
 
 /** Default network key (always a valid NETWORKS entry — see resolveDefaultNetwork). */
@@ -962,8 +1006,14 @@ export function isRealmValid(realmPath: string): boolean {
 }
 
 
-/** Gno chain ID for all RPC calls. */
-export const GNO_CHAIN_ID = NETWORKS[_activeNetwork]?.chainId || "topaz-1"
+/** Gno chain ID for all RPC calls.
+ *  Derived, never literal: this fallback read `"topaz-1"` — a chain
+ *  decommissioned 2026-08-12 — for a month after that retirement. It is
+ *  unreachable in practice (`_activeNetwork` always resolves to a NETWORKS
+ *  key), but an unreachable literal is still a literal that goes stale, and
+ *  this one would have signed transactions for a dead chain if it ever ran.
+ *  `DEFAULT_NETWORK` is guaranteed valid by `resolveDefaultNetwork`. */
+export const GNO_CHAIN_ID = NETWORKS[_activeNetwork]?.chainId || NETWORKS[DEFAULT_NETWORK].chainId
 
 /** The key gnomonitoring knows the active network by — NOT the on-chain chain id.
  *  Defaults to chainId, which is right wherever the two coincide (test-13,
@@ -987,7 +1037,7 @@ export function networkScopedKey(base: string): string {
  * Normal Gno RPC endpoint for standard ABCI queries and broadcasting.
  * Defaults to the active network's RPC URL.
  */
-export const GNO_RPC_URL = NETWORKS[_activeNetwork]?.rpcUrl || "https://rpc.pearl.testnets.gno.land:443"
+export const GNO_RPC_URL = NETWORKS[_activeNetwork]?.rpcUrl || NETWORKS[DEFAULT_NETWORK].rpcUrl
 
 /** Fallback RPC URLs for the active network (tried in order if primary fails). */
 export const GNO_FALLBACK_RPC_URLS: string[] = NETWORKS[_activeNetwork]?.fallbackRpcUrls || []

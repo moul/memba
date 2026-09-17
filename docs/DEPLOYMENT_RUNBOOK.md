@@ -367,7 +367,7 @@ Add a new entry to the `NETWORKS` object with:
 ### 2. Update environment variables
 
 For production (Netlify):
-- `VITE_GNO_CHAIN_ID` — default network KEY (e.g. `pearl`)
+- `VITE_GNO_CHAIN_ID` — default network KEY (e.g. `mainnet`)
 - `VITE_<NETWORK>_RPC_URL` — optional per-network RPC override (e.g. `VITE_PEARL_RPC_URL`). There is no `VITE_GNO_RPC_URL` — no code reads it.
 
 ### 3. Deploy frontend

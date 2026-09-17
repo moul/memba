@@ -1,4 +1,17 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi } from "vitest"
+// Pin the module-load ACTIVE network to pearl — the chain Memba's realms are
+// actually deployed on. `config.ts` resolves it from the URL/localStorage
+// BEFORE any import runs, so this must be hoisted above the imports; a jsdom
+// test has no URL network segment, which left it falling through to
+// DEFAULT_NETWORK. That was invisible while the default was a realm-backed
+// testnet, and became load-bearing at the 2026-09-17 mainnet flip: on a
+// realm-free default this file's subject changes behaviour for reasons that
+// have nothing to do with what it asserts.
+vi.hoisted(() => {
+    localStorage.setItem("memba_network_pref", "pearl")
+    localStorage.setItem("memba_network", "pearl")
+})
+
 import { screen, within } from "@testing-library/react"
 import { renderWithProviders } from "../../test/test-utils"
 import { ValoperPanel } from "./ValoperPanel"

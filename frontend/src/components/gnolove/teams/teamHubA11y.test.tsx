@@ -176,15 +176,30 @@ describe('TeamHubHeader "Data: mainnet" disclosure', () => {
     // which covers topaz. The rule it must NOT break: gnolove-team-hub e2e
     // asserts the chip is ABSENT on gnoland1 ("real chain") — see the third case.
     it("renders on topaz, the network the test13 literal missed", () => {
+        // The <Routes> wrapper is load-bearing, exactly as the control case
+        // below spells out: a bare <MemoryRouter> binds NO :network param, so
+        // useParams() returns {} and the chip condition reads DEFAULT_NETWORK
+        // instead of topaz. This case was written without it and therefore
+        // never tested topaz at all — it passed only because every default
+        // this app has had was a testnet. The 2026-09-17 mainnet flip
+        // (isTestnet: false) turned that silent vacuity into a red test, which
+        // is the useful outcome. Now it binds the param it claims to.
         render(
-            <MemoryRouter>
-                <TeamHubHeader
-                    team={team}
-                    period="monthly"
-                    onPeriodChange={() => {}}
-                    lastSyncedAt="2026-05-19T10:00:00Z"
-                    backToTeamsHref="/gnoland1/gnolove/teams"
-                />
+            <MemoryRouter initialEntries={["/topaz/gnolove/teams/onbloc"]}>
+                <Routes>
+                    <Route
+                        path="/:network/gnolove/teams/:slug"
+                        element={
+                            <TeamHubHeader
+                                team={team}
+                                period="monthly"
+                                onPeriodChange={() => {}}
+                                lastSyncedAt="2026-05-19T10:00:00Z"
+                                backToTeamsHref="/topaz/gnolove/teams"
+                            />
+                        }
+                    />
+                </Routes>
             </MemoryRouter>,
         )
         expect(screen.getByText("Data: mainnet")).toBeInTheDocument()
