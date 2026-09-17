@@ -40,7 +40,7 @@ var questVerification = map[string]string{
 	// Developer — Advanced
 	"write-10-tests": "self_report", "fix-upstream-bug": "self_report", "audit-realm": "self_report",
 	"deploy-3-chains": "on_chain", "build-mcp-tool": "self_report", "gas-optimization": "self_report",
-	"render-masterclass": "on_chain", "gnodaokit-extension": "self_report", "deploy-ibc-realm": "on_chain",
+	"render-masterclass": "on_chain", "deploy-ibc-realm": "on_chain",
 	"mentor-developer": "self_report",
 	// Everyone — Getting Started
 	"connect-wallet": "off_chain", "setup-profile": "off_chain", "register-username": "on_chain",
@@ -95,7 +95,16 @@ var (
 	errVerifyUnavailable = errors.New("on-chain verification unavailable, try again")
 	errQuestNotMet       = errors.New("quest requirements not met on-chain")
 	errMetaServerDerived = errors.New("meta-quests are server-derived and cannot be claimed directly")
+	errQuestRetired      = errors.New("quest is retired and can no longer be completed")
 )
+
+// retiredQuests are ids kept in validQuests only so existing completions keep
+// their XP. They are never completable, syncable or claimable again. Without
+// this guard, an id absent from questVerification would fall to the low-trust
+// default below.
+var retiredQuests = map[string]bool{
+	"gnodaokit-extension": true,
+}
 
 // metaQuests are server-DERIVED achievements (XP milestones, leaderboard rank,
 // category completion). They are never client-claimable — CompleteQuest/SyncQuests
@@ -124,6 +133,9 @@ var (
 // hole (P0-1): the client's claim that it passed the frontend verifier is
 // never trusted.
 func (s *MultisigService) verifyQuestCompletable(ctx context.Context, addr, questID, proof string) error {
+	if retiredQuests[questID] {
+		return connect.NewError(connect.CodeInvalidArgument, errQuestRetired)
+	}
 	// Meta-quests are server-derived (grantDerivedMetaQuests) — never client-claimable.
 	if metaQuests[questID] {
 		return connect.NewError(connect.CodeInvalidArgument, errMetaServerDerived)
@@ -177,13 +189,13 @@ func (s *MultisigService) defaultVerifyOnChainQuest(ctx context.Context, addr, q
 	switch questID {
 	case "register-username":
 		// r/sys/users.Render IGNORES its path arg, so a qrender returns the same
-		// content for any address (an always-passes bug). ResolveAddress returns
-		// *UserData — "(nil ...)" when the address has no @username registered.
-		out, err := questEval(ctx, verifyUserRegistryPath+`.ResolveAddress("`+addr+`")`)
+		// content for any address. resolveUsername uses the ResolveAddress lookup
+		// and accepts only a record for exactly this address.
+		name, err := resolveUsername(ctx, addr)
 		if err != nil {
 			return false, err
 		}
-		return out != "" && !strings.HasPrefix(strings.TrimSpace(out), "(nil"), nil
+		return name != "", nil
 	case "submit-candidature":
 		out, err := questRender(ctx, verifyCandidaturePath, "application/"+addr)
 		if err != nil {
@@ -203,8 +215,8 @@ func (s *MultisigService) defaultVerifyOnChainQuest(ctx context.Context, addr, q
 		}
 		return seq > 0 || accNum > 0, nil
 	case "join-dao":
-		// Structured membership check against memba_dao's authoritative
-		// :members render (un-spoofable; see verifyJoinDAO).
+		// Membership from the realm-written cells of every memba_dao :members
+		// page (see verifyJoinDAO).
 		return verifyJoinDAO(ctx, addr)
 	case "create-token":
 		// Structured creator check against the token factory's per-token
@@ -311,10 +323,10 @@ func (s *MultisigService) namespaceOwnedBy(ctx context.Context, ns, addr string)
 	if err != nil {
 		return false, err
 	}
-	// Match the address as the typed owner FIELD, not as a raw substring, so a
-	// (hypothetical) lookalike username field can't false-positive. ResolveName's
-	// UserData prints the owner as `("<addr>" .uverse.address)`.
-	return strings.Contains(out, `("`+addr+`" .uverse.address)`), nil
+	// Parse the printed UserData and compare its typed owner field, never a raw
+	// substring of the output.
+	u, ok := parseUserData(out)
+	return ok && !u.deleted && u.addr == addr, nil
 }
 
 // pathExists reports whether a realm/package exists at `path` (vm/qfile lists

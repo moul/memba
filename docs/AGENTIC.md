@@ -97,14 +97,19 @@ It exposes 6 tools:
 | `dao_risk_assessment` | Focused risk analysis — what could go wrong |
 | `dao_set_network` | Switch Gno network mid-conversation |
 
-Add the server to your MCP client's configuration file:
+> **Not available today.** The package is not published on npm, and the hosted
+> Memba backend no longer serves the analysis endpoint this server calls (the
+> backend analyst is off unless an operator enables it). The configuration below
+> is for local development from source only.
+
+Add a local build to your MCP client's configuration file:
 
 ```json
 {
   "mcpServers": {
     "dao-analyst": {
-      "command": "npx",
-      "args": ["-y", "@samouraiworld/dao-analyst-mcp@latest"],
+      "command": "node",
+      "args": ["/path/to/memba/mcp-server-dao-analyst/build/index.js"],
       "env": {
         "GNO_RPC_URL": "https://rpc.pearl.testnets.gno.land:443",
         "MEMBA_BACKEND_URL": "https://memba-backend.fly.dev"
@@ -114,11 +119,9 @@ Add the server to your MCP client's configuration file:
 }
 ```
 
-Free tier covers 2 perspectives (technical, financial) at 10 req/min; PRO (on-chain
-credits via `DepositCredits("dao-analyst")` on the agent registry realm) adds the legal
-perspective, multi-model consensus, and 5-way comparison. See
-`mcp-server-dao-analyst/README.md` for env vars (`DAO_ANALYST_TOKEN`; PRO credits
-are checked for the wallet the token was issued to) and tier details.
+The free and PRO tiers this server describes were enforced by a backend route that
+has been removed; do not deposit analyst credits for them. See
+`mcp-server-dao-analyst/README.md` for env vars.
 
 ## CI/CD Integration
 

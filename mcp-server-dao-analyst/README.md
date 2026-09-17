@@ -17,6 +17,11 @@ Registers on-chain in [`gno.land/r/samcrew/agent_registry_v2`](https://gno.land/
 
 ## Setup
 
+> **Not available today.** This package is not published on npm, and the hosted
+> Memba backend no longer serves the analysis endpoint this server calls (the
+> backend analyst is off unless an operator enables it). Build from source for
+> local development only (see Development below).
+
 ### MCP client configuration
 
 Add the server to your MCP client's configuration file:
@@ -25,8 +30,8 @@ Add the server to your MCP client's configuration file:
 {
   "mcpServers": {
     "dao-analyst": {
-      "command": "npx",
-      "args": ["-y", "@samouraiworld/dao-analyst-mcp@latest"],
+      "command": "node",
+      "args": ["/path/to/memba/mcp-server-dao-analyst/build/index.js"],
       "env": {
         "GNO_RPC_URL": "https://rpc.gno.land",
         "MEMBA_BACKEND_URL": "https://backend.memba.samourai.app"
@@ -44,8 +49,8 @@ Add to `.cursor/mcp.json` or `.vscode/mcp.json`:
 {
   "servers": {
     "dao-analyst": {
-      "command": "npx",
-      "args": ["-y", "@samouraiworld/dao-analyst-mcp@latest"],
+      "command": "node",
+      "args": ["/path/to/memba/mcp-server-dao-analyst/build/index.js"],
       "env": {
         "GNO_RPC_URL": "https://rpc.gno.land",
         "MEMBA_BACKEND_URL": "https://backend.memba.samourai.app"
@@ -64,6 +69,9 @@ Add to `.cursor/mcp.json` or `.vscode/mcp.json`:
 | `DAO_ANALYST_TOKEN` | No | — | Memba auth token; PRO credits are checked for the wallet it was issued to |
 
 ## Free vs PRO
+
+> **Historical.** These tiers were enforced by the removed backend analysis
+> route. Do not deposit credits for them.
 
 | | Free | PRO |
 |---|---|---|
@@ -114,14 +122,11 @@ MCP Client (any MCP-compatible client)
 dao-analyst-mcp (local)
   ├─ Fetches on-chain data via ABCI (gno-rpc)
   ├─ Constructs perspective prompts
-  └─ Sends to Memba backend
-       ↕ POST /api/analyst/analyze
-     Memba Backend (Fly.io)
-       ├─ Tier enforcement (on-chain credit check)
-       ├─ LLM routing (Groq, Google AI, Together, Ollama)
-       ├─ Circuit breaker + fallback chain
-       └─ Rate limiting per IP
+  └─ Sends to a Memba backend analysis route
 ```
+
+The hosted Memba backend no longer serves the analysis route this server was
+written against, and its tier enforcement (credit check) was removed with it.
 
 ## License
 
