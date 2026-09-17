@@ -71,7 +71,7 @@ buf generate
 **Netlify environment variables:**
 ```
 VITE_API_URL = https://memba-backend.fly.dev
-VITE_GNO_CHAIN_ID = pearl
+VITE_GNO_CHAIN_ID = mainnet
 VITE_DAO_REALM_PATH = gno.land/r/samcrew/memba_dao
 VITE_GITHUB_CLIENT_ID = <GitHub OAuth App Client ID>
 VITE_GNOLOVE_API_URL = https://backend.gnolove.world

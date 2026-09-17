@@ -34,10 +34,16 @@ import { test, expect } from '@playwright/test'
  */
 
 // Mirrors NETWORKS.pearl rpcUrl + fallbackRpcUrls in frontend/src/lib/config.ts
-// (their ":443" suffix is the https default and normalizes away). CI runs
-// env-less, so PEARL is the active network there (the 2026-08-27 default
-// flip); a local root .env pointing elsewhere already breaks every live-chain
-// spec in the suite.
+// (their ":443" suffix is the https default and normalizes away).
+//
+// PINNED to /pearl since the 2026-09-17 mainnet default flip. This smoke rode
+// the default network while that was pearl; it is really a PEARL smoke — the
+// URLs above, the seed DAOs it expects to resolve, and the outage probe all
+// name that chain. Driving it explicitly keeps it honest instead of
+// silently re-targeting whichever chain the default happens to be.
+// FOLLOW-UP worth having: a sibling smoke on gno.land, where GovDAO resolves
+// live against rpc.gno.land — that one would cover the chain users land on.
+const ACTIVE_NETWORK = 'pearl'
 const ACTIVE_RPC_URLS = [
     'https://rpc.pearl.testnets.gno.land',
     'https://rpc.pearl.samourai.live',
@@ -54,7 +60,7 @@ test.describe('Directory — live chain resolution (smoke)', () => {
         // live resolution is only proven by a card WITHOUT the degraded chip.
         const resolvedCard = page.locator('[data-testid="dao-card"]:not(:has([data-testid="dao-degraded"]))')
 
-        await page.goto('/directory?tab=daos')
+        await page.goto(`/${ACTIVE_NETWORK}/directory?tab=daos`)
         try {
             // At least one seed DAO (e.g. GovDAO) resolves on the active
             // network. The exact count depends on live resolution, so assert

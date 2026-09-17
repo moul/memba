@@ -19,9 +19,12 @@ import { resolveNetworkKey, DEFAULT_NETWORK, NETWORKS } from "./config"
  */
 
 // Fixture networks, by the visibility config.test.ts already pins:
-// pearl, gnoland1 visible; test13, sapphire hidden.
+// mainnet (the default since 2026-09-17) + pearl visible; test13, sapphire,
+// topaz and gnoland1 hidden. VISIBLE_B was `gnoland1` until Betanet was
+// retired to hidden — this file needs TWO visible networks to tell "the URL
+// wins" apart from "the default answered", so it must track the selector.
 const VISIBLE_A = "pearl"
-const VISIBLE_B = "gnoland1"
+const VISIBLE_B = "mainnet"
 const HIDDEN = "sapphire"
 const HIDDEN_DEEP_LINK = "test13"
 

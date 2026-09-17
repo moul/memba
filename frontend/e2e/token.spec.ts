@@ -77,15 +77,24 @@ test.describe('Create Token Page', () => {
         expect(bodyWidth).toBeLessThanOrEqual(380)
     })
 
-    test('the DEFAULT network serves the factory — tokenfactory_v2 is live on pearl', async ({ page }) => {
-        // Flipped back to the form assertion by the pearl §6 completion PR,
-        // exactly as this test's sapphire-era comment instructed: the combined
-        // pearl ceremony deploys + allowlists tokenfactory_v2 on the default
-        // network, so isTokenFactoryValid() is true and CreateToken renders
-        // the real form (the topaz 2026-07-31 precedent). CI catches this
-        // assertion the moment REALM_ALLOWLIST for the default network drops
-        // the factory again.
-        await page.goto('/create-token')
+    test('pearl serves the factory, and the gno.land default honestly gates it', async ({ page }) => {
+        // Was 'the DEFAULT network serves the factory'. That phrasing bound two
+        // separate claims together — "pearl has tokenfactory_v2" and "the
+        // default network is pearl" — and the 2026-09-17 mainnet flip pulled
+        // them apart. Both are asserted here, by KEY, so neither can rot:
+        //
+        //   pearl   — the combined ceremony deploys + allowlists
+        //             tokenfactory_v2, so CreateToken renders the real form.
+        //             This still goes red the moment REALM_ALLOWLIST.pearl
+        //             drops the factory.
+        //   gno.land — REALM_ALLOWLIST.mainnet is explicitly empty (nothing of
+        //             ours is deployed on `gnoland-1`), so the page must gate
+        //             rather than offer a form that cannot broadcast.
+        await page.goto('/pearl/create-token')
         await expect(page.locator('input[placeholder*="Token"]').first()).toBeVisible()
+
+        await page.addInitScript(() => localStorage.setItem('memba_network', 'mainnet'))
+        await page.goto('/mainnet/create-token')
+        await expect(page.locator('input[placeholder*="Token"]')).toHaveCount(0)
     })
 })
