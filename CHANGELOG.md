@@ -24,6 +24,9 @@ Full changelogs are split by version range for easier navigation:
 - Offer eligible members a first text proposal that records a decision without moving funds.
 - Freeze the reviewed vote message and recheck account, membership, archive state, deadlines and prior votes immediately before signing.
 - Preserve scoped proposal drafts and submission receipts across reloads, and require an explicit recovery decision before another attempt.
+### Fixed — release recovery (2026-09-21)
+- Bound stale-chunk recovery across later route failures, handle denied storage, and defer recovery during contract confirmation and signing requests.
+- Explain loading failures without claiming an update was detected.
 ### Mainnet Home reflects available capabilities (2026-09-21)
 - Home labels the token launchpad unavailable where its factory is not deployed, omits the undeployed MembaDAO promotion and describes DAO discovery without implying voting membership.
 - Loading token and validator counts use an unknown placeholder instead of a misleading zero.
