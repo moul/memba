@@ -20,6 +20,11 @@ Full changelogs are split by version range for easier navigation:
 
 ## [Unreleased]
 
+### Fixed — first DAO governance journey (2026-09-21)
+- Offer eligible members a first text proposal that records a decision without moving funds.
+- Freeze the reviewed vote message and recheck account, membership, archive state, deadlines and prior votes immediately before signing.
+- Preserve scoped proposal drafts and submission receipts across reloads, and require an explicit recovery decision before another attempt.
+
 ### gno.land is the default network, and Betanet is retired (2026-09-17)
 <!-- categories: memba, network -->
 - **Opening Memba now lands you on gno.land (`gnoland-1`), the production chain, instead of the Pearl testnet.** Anyone who picked a network before keeps the one they picked; only people who never chose are moved. Pearl stays in the network picker and is unchanged, and every `/pearl/...` link keeps working.
