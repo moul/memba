@@ -20,6 +20,8 @@ Full changelogs are split by version range for easier navigation:
 
 ## [Unreleased]
 
+### Mainnet release evidence
+- Correct the documented default network and separate frontend candidates, published artifacts, fixture checks and real wallet verification.
 ### Fixed — first DAO governance journey (2026-09-21)
 - Offer eligible members a first text proposal that records a decision without moving funds.
 - Freeze the reviewed vote message and recheck account, membership, archive state, deadlines and prior votes immediately before signing.
