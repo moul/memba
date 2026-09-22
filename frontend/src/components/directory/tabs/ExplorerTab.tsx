@@ -137,12 +137,17 @@ function RealmView({ path, networkKey }: { path: string; networkKey: string }) {
         retry: false, refetchOnWindowFocus: false,
     })
     const funcs = funcsQuery.data ?? null
+    const sourceNames = useMemo(
+        () => (source?.functions ?? []).filter((f) => f.isExported).map((f) => f.name),
+        [source],
+    )
+    const usingSourceNames = !funcs?.length && sourceNames.length > 0
 
     // Authoritative qfuncs signatures; fall back to the source parser's exported
     // names (resolveFnList owns the precedence — unit-tested in gnoFuncs.test).
     const fnList: GnoFunc[] = useMemo(
-        () => resolveFnList(funcs, (source?.functions ?? []).filter((f) => f.isExported).map((f) => f.name)),
-        [funcs, source],
+        () => resolveFnList(funcs, sourceNames),
+        [funcs, sourceNames],
     )
 
     return (
@@ -214,13 +219,26 @@ function RealmView({ path, networkKey }: { path: string; networkKey: string }) {
                     funcsQuery.isFetching || (fnList.length === 0 && sourceLoading) ? (
                         <p className="realmview__muted">Loading functions…</p>
                     ) : fnList.length > 0 ? (
-                        <ul className="realmview__funcs">
-                            {fnList.map((fn) => (
-                                <li key={fn.name} className="realmview__func">
-                                    <code>{formatSignature(fn)}</code>
-                                </li>
-                            ))}
-                        </ul>
+                        <>
+                            {funcsQuery.isError && (
+                                <p className="realmview__muted" role="status">
+                                    {funcs?.length ? "Could not refresh functions; showing previously loaded signatures." : "Function query unavailable."}
+                                    {" "}<button className="explorer__go" onClick={() => void funcsQuery.refetch()}>Retry functions</button>
+                                </p>
+                            )}
+                            {usingSourceNames && (
+                                <p className="realmview__muted" role="status">
+                                    Function names from source; signatures unavailable.
+                                </p>
+                            )}
+                            <ul className="realmview__funcs">
+                                {fnList.map((fn) => (
+                                    <li key={fn.name} className="realmview__func">
+                                        <code>{usingSourceNames ? fn.name : formatSignature(fn)}</code>
+                                    </li>
+                                ))}
+                            </ul>
+                        </>
                     ) : funcsQuery.isError ? (
                         <p className="realmview__muted" role="status">Functions could not be read. <button className="explorer__go" onClick={() => void funcsQuery.refetch()}>Retry functions</button></p>
                     ) : (
