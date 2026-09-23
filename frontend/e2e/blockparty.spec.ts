@@ -26,6 +26,20 @@ async function resolveNetwork(page) {
 	return network!
 }
 
+/** The aria-hidden tile layer must always show exactly the accessible grid's values. */
+async function tileLayerMatchesGrid(page) {
+	return page.evaluate(() => {
+		const cells = Array.from(document.querySelectorAll('[role="gridcell"]')).map((cell) =>
+			cell.getAttribute('aria-label')?.match(/column \d+, (\d+)/)?.[1] ?? '0')
+		const tiles = new Array(16).fill('0')
+		for (const tile of Array.from(document.querySelectorAll<HTMLElement>('.k-bp-tile-pos:not([data-kind="consumed"])'))) {
+			const index = Number(tile.style.getPropertyValue('--bp-row')) * 4 + Number(tile.style.getPropertyValue('--bp-col'))
+			tiles[index] = tile.querySelector('.k-bp-tile-val')?.textContent ?? '?'
+		}
+		return cells.length === 16 && cells.join(',') === tiles.join(',')
+	})
+}
+
 test.describe('Block Party', () => {
 	test.beforeEach(async ({ page }) => {
 		await page.setViewportSize({ width: 1280, height: 800 })
@@ -61,6 +75,24 @@ test.describe('Block Party', () => {
 		}
 		await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 })
 		await expect(page.getByRole('button', { name: /share/i })).toBeVisible()
+	})
+
+	test('sliding tiles keep up with fast keyboard play', async ({ page }) => {
+		await stubBlockPartyBackend(page)
+		const network = await resolveNetwork(page)
+		await page.goto(`/${network}/game`, { waitUntil: 'domcontentloaded' })
+		const board = page.getByRole('grid', { name: /block party signal board/i })
+		await expect(page.getByText(/block #99,236/)).toBeVisible({ timeout: 10_000 })
+		await expect(page.locator('.k-bp-tile-layer')).toHaveAttribute('aria-hidden', 'true')
+		expect(await tileLayerMatchesGrid(page)).toBe(true)
+
+		await board.focus()
+		const keys = ['ArrowDown', 'ArrowLeft', 'ArrowUp', 'ArrowRight']
+		// Faster than the slide: every press lands mid-animation.
+		for (let i = 0; i < 12; i++) await page.keyboard.press(keys[(i * 3) % 4], { delay: 10 })
+		expect(await tileLayerMatchesGrid(page), 'tile layer mirrors the board mid-animation').toBe(true)
+		await expect.poll(() => tileLayerMatchesGrid(page)).toBe(true)
+		expect(await page.locator('.k-bp-tile-pos').first().evaluate((tile) => getComputedStyle(tile).transitionDuration)).not.toBe('0s')
 	})
 
 	test('failed challenge fetch shows the error notice and never the sheet', async ({ page }) => {
@@ -103,6 +135,68 @@ test.describe('Block Party', () => {
 		await expect(page.getByText(/saved board — not ranked/i)).toHaveCount(0)
 	})
 
+	test('a Daily run in progress survives a reload', async ({ page }) => {
+		await stubBlockPartyBackend(page)
+		const network = await resolveNetwork(page)
+		await page.goto(`/${network}/game`, { waitUntil: 'domcontentloaded' })
+		const board = page.getByRole('grid', { name: /block party signal board/i })
+		await expect(page.getByText(/live daily · first verified replay is final/i)).toBeVisible({ timeout: 10_000 })
+		// First visit: the plain-language intro is shown, and the first move dismisses it.
+		await expect(page.getByRole('region', { name: /how to play/i })).toBeVisible()
+
+		const snapshot = () => board.getByRole('gridcell').evaluateAll((cells) =>
+			cells.map((cell) => cell.getAttribute('aria-label')).join('|'))
+		const opening = await snapshot()
+		await board.focus()
+		for (const key of ['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'ArrowRight']) await board.press(key)
+		await expect.poll(snapshot).not.toBe(opening)
+		await expect(page.getByRole('region', { name: /how to play/i })).toHaveCount(0)
+		const played = await snapshot()
+		const movesLeft = page.locator('.k-bp-scorebar .k-bp-stat:last-child dd')
+		const movesBefore = await movesLeft.textContent()
+		expect(movesBefore).toMatch(/^\d+ remaining$/)
+
+		await page.reload({ waitUntil: 'domcontentloaded' })
+		await expect(page.getByText(/live daily · first verified replay is final/i)).toBeVisible({ timeout: 10_000 })
+		await expect.poll(snapshot).toBe(played)
+		await expect(movesLeft, 'the move budget carries over, not reset').toHaveText(movesBefore!)
+		// No undo in ranked play, by button or shortcut.
+		await expect(page.getByRole('button', { name: /undo/i })).toHaveCount(0)
+		await page.keyboard.press('u')
+		expect(await snapshot()).toBe(played)
+	})
+
+	test('Practice offers undo by button and keyboard', async ({ page }) => {
+		await stubBlockPartyBackend(page)
+		const network = await resolveNetwork(page)
+		await page.goto(`/${network}/game`, { waitUntil: 'domcontentloaded' })
+		await expect(page.getByText(/block #99,236/)).toBeVisible({ timeout: 10_000 })
+		await page.getByRole('tab', { name: /practice/i }).click()
+		const board = page.getByRole('grid', { name: /block party signal board/i })
+		const snapshot = () => board.getByRole('gridcell').evaluateAll((cells) =>
+			cells.map((cell) => cell.getAttribute('aria-label')).join('|'))
+		const undo = page.getByRole('button', { name: /^undo/i })
+		await expect(undo).toBeDisabled()
+		const start = await snapshot()
+
+		await board.focus()
+		for (const key of ['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft']) {
+			await board.press(key)
+			if (await snapshot() !== start) break
+		}
+		await expect(undo).toBeEnabled()
+		await undo.click()
+		await expect.poll(snapshot).toBe(start)
+
+		await board.focus()
+		for (const key of ['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft']) {
+			await board.press(key)
+			if (await snapshot() !== start) break
+		}
+		await page.keyboard.press('u')
+		await expect.poll(snapshot).toBe(start)
+	})
+
 	test('supports keyboard play, theme switching, and reduced motion', async ({ page }) => {
 		await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'dark' })
 		await page.addInitScript(() => localStorage.setItem('memba_theme', 'dark'))
@@ -125,6 +219,9 @@ test.describe('Block Party', () => {
 		await expect.poll(() => board.getByRole('gridcell').evaluateAll((cells) =>
 			cells.map((cell) => cell.getAttribute('aria-label')).join('|'))).not.toBe(before)
 		expect(await page.locator('.k-bp-tile').first().evaluate((tile) => getComputedStyle(tile).animationName)).toBe('none')
+		// Tiles still land on the right cells, just without the slide.
+		expect(await page.locator('.k-bp-tile-pos').first().evaluate((tile) => getComputedStyle(tile).transitionDuration)).toBe('0s')
+		await expect.poll(() => tileLayerMatchesGrid(page)).toBe(true)
 
 		if (await page.locator('html').getAttribute('data-theme') !== 'light') {
 			await page.getByRole('button', { name: 'Switch to Light theme' }).click()
