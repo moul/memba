@@ -20,6 +20,17 @@ Full changelogs are split by version range for easier navigation:
 
 ## [Unreleased]
 
+### Space Invaders controls and feel (2026-09-23)
+- Play with A/D and W (or ZQSD on AZERTY) as well as the arrows and Space; Esc pauses, and Enter starts a run or plays again.
+- Keep Score and Best readable up to 999,999 on every screen size, with a faint steer/fire guide and a larger pause button on touch screens.
+- Open each wave with a "Wave N" banner, and show first-time players a short how-to that clears on their first move.
+- Add sounds for the UFO, a lost life and game over, plus a stronger cue when your chain multiplier climbs or breaks.
+
+### Space Invaders results and sharing (2026-09-23)
+- Turn the Space Invaders game-over sheet into a results card: the final score counts up, and the card shows wave, accuracy, best chain, remaining relays and where your points came from.
+- Mark a new personal best when a run beats your previous best score.
+- Share a daily or free-play result in one tap, through your device's share sheet or copied to the clipboard.
+
 ### Block Party daily loop (2026-09-23)
 - Your Daily run is saved as you play, so a refresh or a detour to Practice brings back the same board instead of dealing a fresh try; a finished run waits there until you post it.
 - Practice now has Undo (button, U or Ctrl+Z); ranked Daily never does.
