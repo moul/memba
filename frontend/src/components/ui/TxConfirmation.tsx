@@ -19,6 +19,7 @@ import { useState, useCallback, useRef, useEffect } from "react"
 import type { AminoMsg } from "../../lib/grc20"
 import { setTxConfirmationCallback } from "../../lib/grc20"
 import { callDepositCap, deployEffect } from "../../lib/parseMsgs"
+import { SignedAddress, SignedArgs, SignedText } from "./SigningValue"
 import "./tx-confirmation.css"
 
 // ── Types ────────────────────────────────────────────────────
@@ -149,7 +150,7 @@ function TxConfirmationModal({
 
                 {/* Memo */}
                 <div className="tx-confirm-memo">
-                    {memo}
+                    <SignedText value={memo} />
                 </div>
 
                 {/* Warning */}
@@ -171,13 +172,13 @@ function TxConfirmationModal({
                         <div key={e.index} className="tx-confirm-msg">
                             <div className="tx-confirm-detail-row">
                                 <span className="tx-confirm-label">Action</span>
-                                <span className="tx-confirm-value tx-confirm-func">{e.func}</span>
+                                <SignedText value={e.func} className="tx-confirm-value tx-confirm-func" />
                             </div>
                             {e.caller && (
                                 <div className="tx-confirm-detail-row">
                                     <span className="tx-confirm-label">From</span>
-                                    <span className="tx-confirm-value tx-confirm-addr">
-                                        {e.caller.slice(0, 10)}...{e.caller.slice(-6)}
+                                    <span className="tx-confirm-value">
+                                        <SignedAddress value={e.caller} />
                                     </span>
                                 </div>
                             )}
@@ -196,20 +197,14 @@ function TxConfirmationModal({
                             {e.pkgPath && (
                                 <div className="tx-confirm-detail-row">
                                     <span className="tx-confirm-label">Contract</span>
-                                    <span className="tx-confirm-value tx-confirm-path">
-                                        {e.pkgPath}
-                                    </span>
+                                    <SignedText value={e.pkgPath} className="tx-confirm-value tx-confirm-path" />
                                 </div>
                             )}
                             {e.args.length > 0 && (
                                 <div className="tx-confirm-detail-row">
                                     <span className="tx-confirm-label">Args</span>
-                                    <span className="tx-confirm-value tx-confirm-args">
-                                        {e.args.map((a, i) => (
-                                            <span key={i} className="tx-confirm-arg">
-                                                {a.length > 20 ? a.slice(0, 10) + "..." + a.slice(-6) : a}
-                                            </span>
-                                        ))}
+                                    <span className="tx-confirm-value">
+                                        <SignedArgs args={e.args} />
                                     </span>
                                 </div>
                             )}

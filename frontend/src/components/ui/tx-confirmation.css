@@ -118,10 +118,6 @@
     color: var(--color-k-accent-text, #6c63ff);
 }
 
-.tx-confirm-addr {
-    font-family: "JetBrains Mono", monospace;
-    font-size: var(--pro-caption, 11px);
-}
 
 .tx-confirm-send {
     color: var(--color-k-warning-text);
@@ -133,20 +129,6 @@
     opacity: 0.7;
 }
 
-.tx-confirm-args {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    justify-content: flex-end;
-}
-
-.tx-confirm-arg {
-    padding: 1px 6px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
-    font-size: var(--pro-caption, 10px);
-    font-family: var(--font-ui, "JetBrains Mono", monospace);
-}
 
 .tx-confirm-fund-warning {
     margin: 8px 0;
