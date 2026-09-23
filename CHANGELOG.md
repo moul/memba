@@ -20,6 +20,11 @@ Full changelogs are split by version range for easier navigation:
 
 ## [Unreleased]
 
+### Games ready for mainnet (2026-09-23)
+- Drop the retired Pearl testnet from Space Invaders and Block Party copy and test fixtures; both games now speak of the Gno network.
+- Open Block Party in Practice when ranked Daily play is switched off, instead of a locked board with an error panel, and stop retrying that answer.
+- Stop implying a leaderboard for Space Invaders daily runs while certification is off, and list BARRICADE on the Home explore grid.
+
 ### BARRICADE on mainnet phones (2026-09-23)
 - Keep the short-landscape phone battlefield on screen on mainnet by hiding the network notice there too, as the portrait cabinet already did.
 - Point the BARRICADE browser tests and visual audit at mainnet now that the Pearl testnet is retired.
