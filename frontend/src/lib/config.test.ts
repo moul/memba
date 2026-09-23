@@ -22,6 +22,10 @@ import {
     SNAPSHOT_NETWORK,
     FEED_INDEXED_NETWORK,
     selectableNetworksFor,
+    reviewsPathFor,
+    isReviewsAvailable,
+    isRealmValid,
+    ACTIVE_NETWORK_KEY,
 } from './config'
 import { SITEMAP_NETWORK } from './sitemap'
 import { NFT_MARKETPLACE_V3_PATH, NFT_MARKETPLACE_PATH } from './nftConfig'
@@ -166,6 +170,49 @@ describe('config constants', () => {
             expect((records as Record<string, unknown>)?.[base],
                 `allowlisted pearl realm '${base}' has no realm-versions.json pearl record — record the ceremony before merging`).toBeDefined()
         }
+    })
+
+    it('mainnet allowlist is exactly the exposed wave-1 realms, each backed by a realm-versions.json mainnet record', async () => {
+        const { readFileSync, existsSync } = await import('node:fs')
+        const { resolve, dirname } = await import('node:path')
+        let dir = process.cwd()
+        let file = ''
+        for (let i = 0; i < 6 && !file; i++) {
+            const candidate = resolve(dir, 'realm-versions.json')
+            if (existsSync(candidate)) file = candidate
+            else dir = dirname(dir)
+        }
+        expect(file).not.toBe('')
+        const records = (JSON.parse(readFileSync(file, 'utf8')) as Record<string, Record<string, unknown>>).mainnet
+        const exposed = ['memba_appstore_v3', 'memba_reviews_v2', 'memba_feedback_v2', 'gnobuilders_badges_v2', 'memba_feed_v1']
+        for (const base of exposed) {
+            expect(isRealmValidOn('mainnet', `gno.land/r/samcrew/${base}`), `${base} must be allowlisted on mainnet`).toBe(true)
+            expect(records?.[base], `mainnet realm '${base}' has no realm-versions.json mainnet record`).toBeDefined()
+        }
+        // Live on chain but deliberately NOT exposed: custody, commerce-only,
+        // DAO-dependent, and unconfigured attestation/attester lanes.
+        const liveButGated = ['escrow_v3', 'memba_market_config', 'memba_dao_channels_v2',
+            'memba_quest_attestation_v1', 'memba_arcade_leaderboard_v1']
+        for (const base of liveButGated) {
+            expect(records?.[base], `${base} should be recorded as live on mainnet`).toBeDefined()
+            expect(isRealmValidOn('mainnet', `gno.land/r/samcrew/${base}`), `${base} must stay gated on mainnet`).toBe(false)
+        }
+        // Not deployed on mainnet: the v1/v2 predecessors must never validate there.
+        for (const base of ['memba_reviews_v1', 'memba_appstore_v2', 'memba_appstore_reviews_v1']) {
+            expect(isRealmValidOn('mainnet', `gno.land/r/samcrew/${base}`)).toBe(false)
+        }
+    })
+
+    it('chooses the reviews realm per network and gates review surfaces on it', () => {
+        expect(reviewsPathFor('mainnet')).toBe('gno.land/r/samcrew/memba_reviews_v2')
+        expect(reviewsPathFor('pearl')).toBe('gno.land/r/samcrew/memba_reviews_v1')
+        expect(isRealmValidOn('mainnet', reviewsPathFor('mainnet'))).toBe(true)
+        expect(isRealmValidOn('pearl', reviewsPathFor('pearl'))).toBe(true)
+        vi.stubEnv('VITE_ENABLE_REVIEWS', 'false')
+        expect(isReviewsAvailable()).toBe(false)
+        vi.stubEnv('VITE_ENABLE_REVIEWS', 'true')
+        expect(isReviewsAvailable()).toBe(isRealmValid(reviewsPathFor(ACTIVE_NETWORK_KEY)))
+        vi.unstubAllEnvs()
     })
 
     it('mainnet is both a valid default key AND the hard fallback', () => {
@@ -637,7 +684,9 @@ describe('sapphire is SUNSET (2026-09-09) — dark but resolvable', () => {
         // asserted as a set — on the network the §6 completion release moved
         // them to, together with the backend secret window.
         expect(SNAPSHOT_NETWORK).toBe('pearl')
-        expect(FEED_INDEXED_NETWORK).toBe('pearl')
+        // The feed indexer moved to mainnet on 2026-09-23 with its own backend
+        // secret window and feed-state reset.
+        expect(FEED_INDEXED_NETWORK).toBe('mainnet')
         expect(SITEMAP_NETWORK).toBe('pearl')
     })
 })
@@ -763,7 +812,10 @@ describe('FEED_INDEXED_NETWORK — drift tripwire', () => {
         // The feed's network must stay REACHABLE while the divergence lasts —
         // hidden-but-indexed would disable posting for everyone with no path.
         expect(nets[FEED_INDEXED_NETWORK].hidden).not.toBe(true)
-        expect(nets[FEED_INDEXED_NETWORK].realmsDeployed).toBe(true)
+        // The feed realm itself must be live there (mainnet has no memba_dao, so
+        // realmsDeployed stays false, but memba_feed_v1 is published and allowlisted).
+        const { isRealmValidOn: validOn, MEMBA_DAO: dao } = await import('./config')
+        expect(validOn(FEED_INDEXED_NETWORK, dao.feedPath)).toBe(true)
         if (DEFAULT_NETWORK !== FEED_INDEXED_NETWORK) {
             // Divergence is only legitimate while the default's realms are
             // DARK (nothing to post to there anyway). The ceremony flips
@@ -771,11 +823,14 @@ describe('FEED_INDEXED_NETWORK — drift tripwire', () => {
             // move to land in the same PR.
             expect(nets[DEFAULT_NETWORK].realmsDeployed).toBe(false)
         }
-        // The indexer proxy is pinned to the same backend-secret window as the
-        // feed: INDEXER_GRAPHQL_URL and FEED_RPC_URL move together, so the two
-        // frontend pins must never drift apart.
+        // The feed moved to mainnet on 2026-09-23 on its own (FEED_RPC_URL +
+        // FEED_START_BLOCK + feed-reset). The indexer proxy did NOT: there is no
+        // gnoland-1 GraphQL indexer behind INDEXER_GRAPHQL_URL yet, so it stays on
+        // pearl. Both pins are asserted literally so neither can drift silently;
+        // re-couple them when a mainnet indexer lands.
         const { INDEXER_PROXIED_NETWORK } = await import('./config')
-        expect(INDEXER_PROXIED_NETWORK).toBe(FEED_INDEXED_NETWORK)
+        expect(FEED_INDEXED_NETWORK).toBe('mainnet')
+        expect(INDEXER_PROXIED_NETWORK).toBe('pearl')
     })
 
     it('indexer-backed surfaces hide themselves off the proxied network', async () => {

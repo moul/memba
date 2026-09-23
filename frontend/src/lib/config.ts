@@ -315,10 +315,9 @@ export const NETWORKS: Record<string, NetworkConfig> = {
         //
         // Visible since 2026-08-27, and the DEFAULT network 2026-08-27 →
         // 2026-09-17 (mainnet took over — see the `mainnet` entry). Pearl
-        // remains the chain Memba's own realms are deployed on, which is why
-        // SNAPSHOT_NETWORK / FEED_INDEXED_NETWORK / INDEXER_PROXIED_NETWORK
-        // and SITEMAP_NETWORK all still name it: those pin CONTENT, not the
-        // landing network. Realm-dependent
+        // remains the chain SNAPSHOT_NETWORK, INDEXER_PROXIED_NETWORK and
+        // SITEMAP_NETWORK name: those pin CONTENT, not the landing network.
+        // (FEED_INDEXED_NETWORK moved to mainnet on 2026-09-23.) Realm-dependent
         // surfaces stay behind `realmsDeployed: false` (honest
         // RealmsNotDeployedBanner) until the combined ceremony. Auth is
         // fail-closed regardless: a pearl-1 token is refused until the owner
@@ -527,11 +526,12 @@ export const NETWORKS: Record<string, NetworkConfig> = {
         // false (gno.land/r/samcrew/memba_dao → 404, re-checked 2026-09-17),
         // so the landing page is the honest RealmsNotDeployedBanner plus the
         // realm-free lanes — DAOs (GovDAO and member-deployed), Validators,
-        // Tokens, Directory, chain health. The three backend-pinned constants
-        // (SNAPSHOT_NETWORK / FEED_INDEXED_NETWORK / INDEXER_PROXIED_NETWORK)
-        // deliberately STAY on pearl and self-disable here — they track Fly
-        // secrets, not the landing network, and moving them without the
-        // secrets is the partial-cutover failure this repo keeps re-learning.
+        // Tokens, Directory, chain health. The backend-pinned constants track Fly
+        // secrets, not the landing network: SNAPSHOT_NETWORK and
+        // INDEXER_PROXIED_NETWORK stay on pearl; FEED_INDEXED_NETWORK moved here
+        // on 2026-09-23 together with FEED_RPC_URL/FEED_START_BLOCK and the
+        // feed-state reset. Moving one without its secrets is the
+        // partial-cutover failure this repo keeps re-learning.
         hidden: false,
         realmsDeployed: false,
         // NOT a testnet — this is the production chain. Drives the disclosures
@@ -818,17 +818,24 @@ const REALM_ALLOWLIST: Record<string, readonly string[] | undefined> = {
     // absent key — absent means "no allowlist", which isRealmValidOn used to
     // read as "everything is valid" (F-28).
     gnoland1: [],
-    // Mainnet (`gnoland-1`): Memba deploys nothing here, and unlike every
-    // other empty entry this is not merely "not yet". Two independent gates
-    // hold, either of which alone is sufficient (see the NETWORKS.mainnet
-    // note): the `samcrew` NAMESPACE is unreachable without a GovDAO grant,
-    // and §126 locks `ugnot` transfers chain-wide so every custody lane would
-    // panic on both funding and payout. An EXPLICIT empty list, not an absent
-    // key — the predicate below already fails closed, so this states intent.
-    // ⛔ Do not add a path here for mainnet until BOTH gates clear AND the
-    // realm is verified live with a realm-versions.json `mainnet` record
-    // (that file is keyed by NETWORK KEY, like `pearl` — not by chain id).
-    mainnet: [],
+    // Mainnet (`gnoland-1`): wave 1 was published 2026-09-23 by the samcrew
+    // namespace multisig (realm-versions.json `mainnet`). Only realms whose
+    // Memba surface is safe to expose are listed: escrow_v3 (custodies funds;
+    // its builder is not mainnet-ready), memba_market_config (commerce-only),
+    // memba_dao_channels_v2 (needs memba_dao), memba_quest_attestation_v1 (no
+    // signer set) and memba_arcade_leaderboard_v1 (no attester) are live on
+    // chain but deliberately NOT listed. memba_appstore_v3 carries one money
+    // path — RegisterApp pays the listing fee to the realm treasury (the
+    // publisher multisig at deploy) — and stays behind VITE_ENABLE_APPSTORE and
+    // VITE_ENABLE_APPSTORE_SUBMIT. Every entry needs a realm-versions.json
+    // `mainnet` record (keyed by NETWORK KEY, not chain id).
+    mainnet: [
+        "gno.land/r/samcrew/memba_appstore_v3",
+        "gno.land/r/samcrew/memba_reviews_v2",
+        "gno.land/r/samcrew/memba_feedback_v2",
+        "gno.land/r/samcrew/gnobuilders_badges_v2",
+        "gno.land/r/samcrew/memba_feed_v1",
+    ],
     // Pearl — the combined-ceremony set (§4 of docs/PEARL_CUTOVER_PLAN.md):
     // the default core lane + the commerce set in one window. Entry list =
     // exactly the deployer's dry-run walk on the [pearl] lane (verified
@@ -1157,8 +1164,9 @@ export function getExplorerBaseUrlFor(networkKey: string): string {
  *  (see networkPins.test.ts): without this gate, any active network that
  *  merely HAS an indexerUrl configured (pearl does — its own indexer is live)
  *  would render the PROXIED chain's transactions and block times as its own,
- *  with explorer links built for the wrong chain. Moves with the ceremony's
- *  backend secret window, alongside the feed pins.
+ *  with explorer links built for the wrong chain. Moves with the backend
+ *  INDEXER_GRAPHQL_URL secret; since 2026-09-23 it no longer shares a network with
+ *  the feed (no gnoland-1 GraphQL indexer exists yet).
  *  Pearl cutover: flipped to "pearl" in the §6 completion release, in the same
  *  window as the backend INDEXER_GRAPHQL_URL secret move. */
 export const INDEXER_PROXIED_NETWORK = "pearl"
@@ -1314,6 +1322,21 @@ export const MEMBA_TOKEN = import.meta.env.PROD
     ? MEMBA_TOKEN_PROD
     : MEMBA_TOKEN_DEV
 
+/**
+ * Realm generations differ per network: mainnet ships memba_reviews_v2 (same public API as v1)
+ * and only the v3 App Store, while pearl and older testnets carry reviews v1 and App Store v2.
+ * An env override wins everywhere (deploy previews). Callers that know the URL network (route
+ * gates) pass it explicitly; MEMBA_DAO resolves them for the active network.
+ */
+export function reviewsPathFor(networkKey: string): string {
+    return import.meta.env.VITE_REVIEWS_REALM_PATH
+        || (networkKey === "mainnet" ? "gno.land/r/samcrew/memba_reviews_v2" : "gno.land/r/samcrew/memba_reviews_v1")
+}
+export function appStorePathFor(networkKey: string): string {
+    return import.meta.env.VITE_APPSTORE_REALM_PATH
+        || (networkKey === "mainnet" ? "gno.land/r/samcrew/memba_appstore_v3" : "gno.land/r/samcrew/memba_appstore_v2")
+}
+
 /** MembaDAO realm paths and deployment params. */
 export const MEMBA_DAO = {
     realmPath: "gno.land/r/samcrew/memba_dao",
@@ -1324,7 +1347,8 @@ export const MEMBA_DAO = {
     nftMarketPath: "gno.land/r/samcrew/memba_nft_market_v2",
     nftCollectionsPath: "gno.land/r/samcrew/memba_collections", // Phase 2 launchpad registry (pending deploy)
     badgesPath: "gno.land/r/samcrew/gnobuilders_badges_v2",
-    reviewsPath: import.meta.env.VITE_REVIEWS_REALM_PATH || "gno.land/r/samcrew/memba_reviews_v1",
+    reviewsPath: reviewsPathFor(ACTIVE_NETWORK_KEY),
+    appStorePath: appStorePathFor(ACTIVE_NETWORK_KEY),
     // Reputation-isolated App Store reviews realm (shares the reviews engine but keeps its
     // reputation graph separate from the validator/profile web-of-trust). Deployed to test13.
     appReviewsPath: import.meta.env.VITE_APPSTORE_REVIEWS_REALM_PATH || "gno.land/r/samcrew/memba_appstore_reviews_v1",
@@ -1382,8 +1406,13 @@ export const SNAPSHOT_NETWORK = "pearl"
  * Pearl cutover: flipped to "pearl" in the §6 completion release — same rule
  * as sapphire: SAME release as the backend FEED_RPC_URL + FEED_START_BLOCK
  * secret flip AND the mandatory feed-state reset (`/app/memba feed-reset`).
+ *
+ * Mainnet cutover (2026-09-23): flipped to "mainnet" after the backend moved
+ * FEED_RPC_URL to the Samourai gnoland-1 node, FEED_START_BLOCK to 265728 (the
+ * memba_feed_v1 deploy height, realm-versions.json `mainnet`) and the feed-state
+ * reset ran. The Pearl feed is no longer indexed.
  */
-export const FEED_INDEXED_NETWORK = "pearl"
+export const FEED_INDEXED_NETWORK = "mainnet"
 
 /** Human-readable label for the indexed network (for user-facing copy). */
 export const FEED_INDEXED_NETWORK_LABEL =
@@ -1456,10 +1485,14 @@ export const isTokensEnabled = (): boolean => import.meta.env.VITE_ENABLE_TOKENS
 export const isAgentsEnabled = (): boolean => import.meta.env.VITE_ENABLE_AGENTS === "true"
 export const isReviewsEnabled = (): boolean => import.meta.env.VITE_ENABLE_REVIEWS === "true"
 export const isReviewsValid = (): boolean => isRealmValid(MEMBA_DAO.reviewsPath)
+/** Reviews surfaces render only when the flag is on AND the reviews realm is live on the active network. */
+export const isReviewsAvailable = (): boolean => isReviewsEnabled() && isReviewsValid()
 /** Community reviews on App Store listings (B2b). Ordinary flag — the App Store reviews
  * realm moves no funds (reputation graph only). Literal reader (prod-bundle safe). Gates the
  * ReviewsSection mount + AppReviewStars on the App Store detail page. */
 export const isAppReviewsEnabled = (): boolean => import.meta.env.VITE_ENABLE_APP_REVIEWS === "true"
+/** App Store reviews render only when the flag is on AND the app-reviews realm is live on the active network. */
+export const isAppReviewsAvailable = (): boolean => isAppReviewsEnabled() && isRealmValid(MEMBA_DAO.appReviewsPath)
 /** Social feed (W7.2). Ordinary flag — no funds. Literal reader (dynamic
  * import.meta.env[key] is undefined in prod bundles). */
 export const isFeedEnabled = (): boolean => import.meta.env.VITE_ENABLE_FEED === "true"

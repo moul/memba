@@ -273,11 +273,14 @@ for (const network of ['mainnet', 'pearl']) {
         await page.getByRole('button', { name: 'Reset filters' }).click()
         await expect(page.getByRole('link', { name: 'Visit mygnoscan (opens in a new tab)' })).toHaveAttribute('href', 'https://mygnoscan.moul.p2p.team/storage?network=mainnet')
         await expect(page.getByRole('button', { name: /connect wallet/i })).toHaveCount(0)
-        if (network === 'mainnet') {
+        if (process.env.DESIGN_REVIEW_FEATURES === 'true') {
+            // The v3 registry is live on mainnet since 2026-09-23, so with the flag on it
+            // mounts on both networks (networks without an App Store realm stay closed:
+            // AppStoreGate unit tests).
+            await expect(page.getByTestId('appstore-root')).toBeVisible()
+        } else {
             await expect(page.getByTestId('appstore-root')).toHaveCount(0)
             await expect(page.getByRole('link', { name: 'Submit your app', exact: true })).toHaveCount(0)
-            await page.goto('/mainnet/apps/submit')
-            await expect(page.getByRole('link', { name: 'Browse ecosystem projects' })).toBeVisible()
         }
     })
 }
