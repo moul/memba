@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 
 test.use({ baseURL: 'http://localhost:5174' })
 
-const gameURL = '/pearl/game/barricade'
+const gameURL = '/mainnet/game/barricade'
 
 async function expectControlsInView(page: Page) {
   const layout = await page.evaluate(() => {
@@ -43,6 +43,21 @@ test('keeps start and live controls alongside the battlefield on portrait phones
   }
 })
 
+test('loads the approved civic defender and machine art for the compact 2D fallback', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(gameURL, { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('.bar-shell')).toHaveAttribute('data-renderer', '2d')
+
+  await expect.poll(async () => page.evaluate(() => performance
+    .getEntriesByType('resource')
+    .map(entry => new URL(entry.name).pathname)
+    .filter(path => path.startsWith('/games/barricade/'))), { timeout: 10_000 }).toEqual(expect.arrayContaining([
+      '/games/barricade/citizen.webp',
+      '/games/barricade/drone.webp',
+      '/games/barricade/walker.webp',
+    ]))
+})
+
 test('keeps mainnet start controls clear of the notice and mobile navigation', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/mainnet/game/barricade', { waitUntil: 'domcontentloaded' })
@@ -59,5 +74,5 @@ test('keeps a short landscape game and its actions visible', async ({ page }) =>
   await page.getByRole('button', { name: 'Daily run' }).click()
   await expectControlsInView(page)
   await page.getByRole('link', { name: 'Exit game' }).click()
-  await expect(page).toHaveURL(/\/pearl\/?$/)
+  await expect(page).toHaveURL(/\/mainnet\/?$/)
 })
