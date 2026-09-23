@@ -4,15 +4,19 @@
  * network ("The Pearl testnet has been retired — you're now on gno.land
  * mainnet.").
  *
- * Shown only when the current history entry was reached through that redirect
- * (router state), and never again once dismissed for that retired network.
+ * Shown once per redirect: the redirect hands the retired key over in router
+ * state, the notice captures it on mount and then REPLACES the history entry
+ * with a state-free copy. Router state lives in `history.state`, which a reload
+ * restores — without the replace, reloading the page would show the notice
+ * again. The notice stays on the page it landed on and never follows the user
+ * elsewhere, and once dismissed it never returns for that retired network.
  * Storage is best-effort: when it is blocked the notice still renders and
  * dismisses for the session, it just cannot remember the dismissal.
  *
  * @module components/ui/RetiredNetworkNotice
  */
-import { useState } from "react"
-import { useLocation } from "react-router-dom"
+import { useEffect, useState } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import {
     retiredNetworkMessage,
     retiredNoticeStorageKey,
@@ -35,9 +39,30 @@ function rememberDismissal(retiredKey: string): void {
 
 export function RetiredNetworkNotice() {
     const location = useLocation()
-    const retiredKey = (location.state as Partial<RetiredNetworkState> | null)?.retiredNetwork
+    const navigate = useNavigate()
+    const { pathname, search, hash } = location
+    const incoming = (location.state as Partial<RetiredNetworkState> | null)?.retiredNetwork
+    // NetworkGate renders the redirect instead of the shell for a retired key,
+    // so the shell (and this notice with it) mounts fresh after each redirect
+    // and captures the handed-over key at mount. The shell then STAYS mounted
+    // across same-network navigation, so the capture is cleared the first time
+    // the user leaves the landing page — otherwise Back to it would re-show the
+    // notice.
+    const [captured, setCaptured] = useState(() => incoming ? { key: incoming, pathname } : null)
     const [dismissedNow, setDismissedNow] = useState<string | null>(null)
 
+    // Adjusted while rendering (React's pattern for state derived from a
+    // changing input), not in an effect: the landing page is left the moment
+    // the pathname differs, and it must never count as "still here" again.
+    if (captured && captured.pathname !== pathname) setCaptured(null)
+
+    // Consume the router state: replace this entry with a state-free copy so a
+    // reload (history.state survives it) or Back/Forward does not re-show it.
+    useEffect(() => {
+        if (incoming) navigate({ pathname, search, hash }, { replace: true, state: null })
+    }, [incoming, navigate, pathname, search, hash])
+
+    const retiredKey = incoming ?? (captured && captured.pathname === pathname ? captured.key : undefined)
     if (!retiredKey || dismissedNow === retiredKey || isDismissed(retiredKey)) return null
     const message = retiredNetworkMessage(retiredKey)
     if (!message) return null

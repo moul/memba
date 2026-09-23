@@ -20,6 +20,12 @@ Full changelogs are split by version range for easier navigation:
 
 ## [Unreleased]
 
+### Pearl retirement follow-ups (2026-09-23)
+<!-- categories: memba, network -->
+- The Pearl retirement notice appears once per redirected link; reloading the page no longer brings it back.
+- Navigation outside a network page and the directory cache follow the network you are on or last chose, never a retired one you merely visited.
+- The MCP servers default to the gno.land mainnet node, and their `pearl` network alias is removed.
+
 ### Security — signing surfaces show what is signed (2026-09-23)
 - **Transaction confirmation and the multisig co-sign page show every address in full.** Addresses and realm paths in a transaction's arguments, the sending account and a multisig transfer's recipient now appear in full, wrapped and in a fixed-width font with a Copy button, instead of being shortened to their first and last characters, which hid the middle characters that set a lookalike address apart. Each argument is shown on its own, so a comma inside one cannot pass for two; other long arguments are shortened only behind a visible "more characters hidden" marker and a Show full toggle. Invisible characters in arguments and the memo are shown as `[U+XXXX]` markers, and each value is laid out left to right in the order it is signed, so neither invisible characters nor right-to-left letters can reorder it.
 - **Invisible characters are revealed on every DAO page.** Zero-width and text-direction characters, variation selectors and Hangul fillers in DAO names, descriptions, member usernames, roles and categories are shown as `[U+XXXX]` markers on the DAO list, overview, members and settings pages and in the directory, profile and vote widgets, as proposals already did.

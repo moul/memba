@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from "vitest"
-import { render, screen, cleanup, fireEvent } from "@testing-library/react"
+import { render, screen, cleanup, fireEvent, act } from "@testing-library/react"
 import { MemoryRouter, Routes, Route, Link } from "react-router-dom"
 import { NetworkGate } from "./NetworkGate"
 import { retiredNoticeStorageKey } from "../../lib/retiredNetwork"
@@ -13,16 +13,19 @@ import { retiredNoticeStorageKey } from "../../lib/retiredNetwork"
  * NetworkSync is stubbed because it reloads the page on a network mismatch.
  */
 vi.mock("./Layout", async () => {
-    const { useLocation } = await import("react-router-dom")
+    const { useLocation, useNavigate: useNav } = await import("react-router-dom")
     const { RetiredNetworkNotice } = await import("../ui/RetiredNetworkNotice")
     return {
         Layout: () => {
-            const { pathname, search, hash } = useLocation()
+            const { pathname, search, hash, state } = useLocation()
+            const navigate = useNav()
             return (
                 <div>
                     <RetiredNetworkNotice />
                     <div data-testid="landed">{`${pathname}${search}${hash}`}</div>
+                    <div data-testid="history-state">{JSON.stringify(state ?? null)}</div>
                     <Link to="/mainnet/validators">next page</Link>
+                    <button type="button" onClick={() => navigate(-1)}>go back</button>
                 </div>
             )
         },
@@ -32,7 +35,7 @@ vi.mock("./NetworkSync", () => ({ NetworkSync: () => null }))
 
 const NOTICE = "The Pearl testnet has been retired — you're now on gno.land mainnet."
 
-function renderAt(entry: string) {
+function renderAt(entry: string | { pathname: string; state: unknown }) {
     cleanup()
     render(
         <MemoryRouter initialEntries={[entry]}>
@@ -94,6 +97,30 @@ describe("NetworkGate — retired networks redirect to their successor", () => {
         expect(notice()).not.toBeNull()
         fireEvent.click(screen.getByRole("link", { name: "next page" }))
         expect(screen.getByTestId("landed").textContent).toBe("/mainnet/validators")
+        expect(notice()).toBeNull()
+    })
+
+    it("does not come back when the user navigates away and then goes Back", () => {
+        renderAt("/pearl/dao")
+        expect(notice()).not.toBeNull()
+        fireEvent.click(screen.getByRole("link", { name: "next page" }))
+        expect(screen.getByTestId("landed").textContent).toBe("/mainnet/validators")
+        expect(notice()).toBeNull()
+        // The shell stayed mounted; Back returns to the landing page itself.
+        act(() => { fireEvent.click(screen.getByRole("button", { name: "go back" })) })
+        expect(screen.getByTestId("landed").textContent).toBe("/mainnet/dao")
+        expect(notice()).toBeNull()
+    })
+
+    it("shows once per redirect: the router state is consumed, so a reload does not re-show it", () => {
+        renderAt("/pearl/validators")
+        expect(notice()).not.toBeNull()
+        // The redirect's state was replaced with a state-free entry…
+        const persisted = JSON.parse(screen.getByTestId("history-state").textContent ?? "null")
+        expect(persisted).toBeNull()
+        // …so reloading that entry (history.state restored as-is) stays quiet,
+        // even though the notice was never dismissed.
+        expect(renderAt({ pathname: "/mainnet/validators", state: persisted })).toBe("/mainnet/validators")
         expect(notice()).toBeNull()
     })
 
