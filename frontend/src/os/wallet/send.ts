@@ -7,6 +7,8 @@
  *
  * @module os/wallet/send
  */
+import { ASCII_EDGE_WHITESPACE_RE } from "../../lib/dao/shared"
+import { resolveRecipient, type RecipientResolution } from "../../lib/nameResolve"
 import { isChecksummedAddress } from "../../lib/templates/dao/v2/bech32"
 import type { AminoMsg } from "../../lib/grc20"
 
@@ -39,15 +41,65 @@ export function formatUgnot(v: bigint): string {
 
 export type Recipient =
     | { kind: "address"; address: string }
+    /** An @name from the gno.land user registry (D23), with the address it resolved to. */
+    | { kind: "name"; name: string; address: string }
+    | { kind: "pending"; name: string }
     | { kind: "error"; error: string }
     | null
 
-/** What the To field names. `@name` resolution arrives with the user registry resolver (D23). */
-export function readRecipient(input: string, hrp = "g"): Recipient {
-    const v = input.trim()
+/** What the registry said about the @name in the To field (from #1305's resolveRecipient). */
+export type NameLookup =
+    | { status: "loading" }
+    | { status: "found"; name: string; address: string }
+    | { status: "missing"; name: string }
+    | { status: "error"; name: string }
+    | { status: "invalid"; reason: string }
+
+const ADDRESS = /^g1[02-9ac-hj-np-z]{38}$/
+const trimAscii = (s: string) => s.replace(ASCII_EDGE_WHITESPACE_RE, "")
+
+/** The @name input to look up (ASCII-trimmed, as typed), or null when the To field isn't an @name.
+ *  All name rules (ASCII only before lower-casing, the registry rule, address look-alikes) live in
+ *  the shared resolveRecipient; Send only insists on the leading @. */
+export function nameToLookUp(input: string): string | null {
+    const v = trimAscii(input)
+    return v.startsWith("@") ? v : null
+}
+
+/** Look an @name up through the shared recipient resolver (#1305) and map it to a form state. */
+export async function lookUpName(input: string, resolve: (input: string) => Promise<RecipientResolution> = resolveRecipient): Promise<NameLookup> {
+    const r = await resolve(input)
+    switch (r.kind) {
+        // An @ in front of an address is never a name.
+        case "address": return r.name ? { status: "found", name: r.name, address: r.address } : { status: "invalid", reason: "That's an address: remove the @." }
+        case "unregistered": return { status: "missing", name: r.name }
+        case "unreachable": return { status: "error", name: r.name }
+        case "invalid": return { status: "invalid", reason: r.reason }
+    }
+}
+
+/** The address a recipient pays, once there is one. */
+export function recipientAddress(r: Recipient): string | null {
+    return r?.kind === "address" || r?.kind === "name" ? r.address : null
+}
+
+/** What the To field names: a g1 address, or an @name resolved through `lookup` (keyed by the typed @input). */
+export function readRecipient(input: string, lookup?: (atName: string) => NameLookup | undefined, hrp = "g"): Recipient {
+    const v = trimAscii(input)
     if (!v) return null
-    if (/^@?[a-z][a-z0-9_]{2,}$/i.test(v) && !v.startsWith("g1")) return { kind: "error", error: "Name lookup isn't in Memba OS yet. Paste the g1… address." }
-    if (!/^g1[02-9ac-hj-np-z]{38}$/.test(v)) return { kind: "error", error: "That isn't a g1… address." }
+    if (v.startsWith("@")) {
+        const found = lookup?.(v) ?? { status: "loading" }
+        // Shown as typed while waiting: never a case-folded look-alike.
+        if (found.status === "loading") return { kind: "pending", name: v.slice(1) }
+        if (found.status === "invalid") return { kind: "error", error: found.reason }
+        if (found.status === "missing") return { kind: "error", error: `No gno.land user is named @${found.name}.` }
+        if (found.status === "error") return { kind: "error", error: `Couldn't look up @${found.name} right now. Try again, or paste the g1… address.` }
+        // The registry's answer is checked like a typed address: a bad one never becomes a recipient.
+        if (!ADDRESS.test(found.address) || !isChecksummedAddress(found.address, hrp)) return { kind: "error", error: `@${found.name} resolved to an invalid address. Paste the g1… address instead.` }
+        return { kind: "name", name: found.name, address: found.address }
+    }
+    if (/^[a-z][a-z0-9_-]{2,}$/i.test(v) && !v.startsWith("g1")) return { kind: "error", error: "Start a username with @ (like @alice), or paste the g1… address." }
+    if (!ADDRESS.test(v)) return { kind: "error", error: "That isn't a g1… address." }
     if (!isChecksummedAddress(v, hrp)) return { kind: "error", error: "This address has a typo (its checksum doesn't match)." }
     return { kind: "address", address: v }
 }
@@ -62,18 +114,20 @@ export interface SendCheck {
     tiers: string[]
 }
 
-export function checkSend(d: SendDraft, ctx: { from: string; balance: bigint | null; fee: bigint; mainnet: boolean; known: (a: string) => boolean }): SendCheck {
-    const recipient = readRecipient(d.to)
+export function checkSend(d: SendDraft, ctx: { from: string; balance: bigint | null; fee: bigint; mainnet: boolean; known: (a: string) => boolean; lookup?: (atName: string) => NameLookup | undefined }): SendCheck {
+    const recipient = readRecipient(d.to, ctx.lookup)
+    const to = recipientAddress(recipient)
     const ugnot = parseGnot(d.amount)
     const problems: SendCheck["problems"] = {}
     if (!recipient) problems.to = "Who should receive it?"
     else if (recipient.kind === "error") problems.to = recipient.error
-    else if (recipient.address === ctx.from) problems.to = "That's your own address."
+    else if (recipient.kind === "pending") problems.to = `Looking up @${recipient.name}…`
+    else if (to === ctx.from) problems.to = "That's your own address."
     if (ugnot === null) problems.amount = d.amount.includes(",") ? "Use a dot for decimals, and no commas (12.5)." : "Enter an amount, up to 6 decimals."
     else if (ctx.balance !== null && ugnot + ctx.fee > ctx.balance) problems.amount = `More than you have (${formatUgnot(ctx.balance)}), keeping ${formatUgnot(ctx.fee)} for the fee.`
     if ([...d.memo].length > MEMO_MAX) problems.memo = `Up to ${MEMO_MAX} characters.`
     const tiers: string[] = []
-    if (ctx.mainnet && recipient?.kind === "address" && !ctx.known(recipient.address)) tiers.push("new address")
+    if (ctx.mainnet && to !== null && !ctx.known(to)) tiers.push("new address")
     if (ctx.mainnet && ugnot !== null && ugnot >= LARGE_SEND_UGNOT) tiers.push("100 GNOT or more")
     return { recipient, ugnot, problems, tiers }
 }
