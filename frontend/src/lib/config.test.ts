@@ -1009,6 +1009,8 @@ describe('topaz commerce-v2 allowlist — funds-free realms only', () => {
         //                         (listing them alone gives a half-wired launchpad).
         const custodyFunds: Record<string, string> = {
             escrow: MEMBA_DAO.escrowPath,
+            // escrow_v3 stays listed on test13 (the e2e fixture) after the switch to v4.
+            escrowV3: 'gno.land/r/samcrew/escrow_v3',
             tokenOtc: MEMBA_DAO.tokenOtcPath,
             nftMarketV2: MEMBA_DAO.nftMarketPath,
             nftMarketV3_2: NFT_MARKETPLACE_V3_PATH,
@@ -1028,7 +1030,8 @@ describe('topaz commerce-v2 allowlist — funds-free realms only', () => {
         // The ONE held-back path that test13 does not list, single-sourced so the
         // exclusion is stated exactly once. Everything else gets BOTH guards by
         // default — a new entry added above cannot silently miss the anchor.
-        const notOnTest13 = new Set<string>([MEMBA_MARKET_CONFIG_PATH])
+        // escrow_v4 (the active escrowPath) is listed on no network until its go-live.
+        const notOnTest13 = new Set<string>([MEMBA_MARKET_CONFIG_PATH, 'gno.land/r/samcrew/escrow_v4'])
 
         for (const [name, path] of Object.entries({ ...custodyFunds, ...fundsFreeButCoupled })) {
             // GUARD 1 — SHAPE, checked first. Catches a mistyped CONSTANT name,
@@ -1084,9 +1087,46 @@ describe('topaz commerce-v2 allowlist — funds-free realms only', () => {
         vi.resetModules()
     })
 
+    it('targets escrow_v4, which stays gated on every network until its go-live', async () => {
+        const { isRealmValidOn, MEMBA_DAO, NETWORKS } = await import('./config')
+        expect(MEMBA_DAO.escrowPath).toBe('gno.land/r/samcrew/escrow_v4')
+        for (const key of Object.keys(NETWORKS)) {
+            expect(isRealmValidOn(key, MEMBA_DAO.escrowPath), key).toBe(false)
+        }
+    })
+
+    it('VITE_ESCROW_REALM_PATH selects only escrow_v3 or escrow_v4; anything else falls back to v4 with a warning', async () => {
+        const { resolveEscrowPath } = await import('./config')
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+        expect(resolveEscrowPath(undefined)).toBe('gno.land/r/samcrew/escrow_v4')
+        expect(resolveEscrowPath('')).toBe('gno.land/r/samcrew/escrow_v4')
+        expect(resolveEscrowPath('gno.land/r/samcrew/escrow_v3')).toBe('gno.land/r/samcrew/escrow_v3')
+        expect(resolveEscrowPath('gno.land/r/samcrew/escrow_v4')).toBe('gno.land/r/samcrew/escrow_v4')
+        expect(warn).not.toHaveBeenCalled()
+        for (const bad of ['gno.land/r/samcrew/escrow_v2', 'gno.land/r/evil/escrow', 'gno.land/r/samcrew/escrow_v4 ', 'gno.land/r/samcrew/memba_token_otc_v2']) {
+            expect(resolveEscrowPath(bad), bad).toBe('gno.land/r/samcrew/escrow_v4')
+        }
+        expect(warn).toHaveBeenCalledTimes(4)
+        warn.mockRestore()
+    })
+
+    it('an unsupported VITE_ESCROW_REALM_PATH never reaches MEMBA_DAO.escrowPath', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+        vi.stubEnv('VITE_ESCROW_REALM_PATH', 'gno.land/r/samcrew/escrow_v2')
+        vi.resetModules()
+        const { MEMBA_DAO } = await import('./config')
+        expect(MEMBA_DAO.escrowPath).toBe('gno.land/r/samcrew/escrow_v4')
+        vi.stubEnv('VITE_ESCROW_REALM_PATH', 'gno.land/r/samcrew/escrow_v3')
+        vi.resetModules()
+        expect((await import('./config')).MEMBA_DAO.escrowPath).toBe('gno.land/r/samcrew/escrow_v3')
+        vi.unstubAllEnvs()
+        vi.resetModules()
+        warn.mockRestore()
+    })
+
     it('does not touch the test13 allowlist', async () => {
         const { isRealmValidOn, MEMBA_DAO } = await import('./config')
-        expect(isRealmValidOn('test13', MEMBA_DAO.escrowPath)).toBe(true)
+        expect(isRealmValidOn('test13', 'gno.land/r/samcrew/escrow_v3')).toBe(true)
         expect(isRealmValidOn('test13', MEMBA_DAO.tokenOtcPath)).toBe(true)
     })
 })
@@ -1156,6 +1196,9 @@ describe('resolveStoredNetworkKey — hiding a network must not strand anyone', 
         // landing lane would vanish. Adding `!hidden` to resolveDefaultNetwork
         // would therefore red the e2e suite for no user-facing gain.
         vi.stubEnv('VITE_GNO_CHAIN_ID', 'test13')
+        // .env.e2e also pins the escrow realm to escrow_v3: the default, escrow_v4,
+        // is allowlisted nowhere yet and would gate the Services lane there.
+        vi.stubEnv('VITE_ESCROW_REALM_PATH', 'gno.land/r/samcrew/escrow_v3')
         vi.resetModules()
         const { DEFAULT_NETWORK, NETWORKS, selectableNetworksFor, isRealmValidOn, MEMBA_DAO } = await import('./config')
         expect(DEFAULT_NETWORK).toBe('test13')

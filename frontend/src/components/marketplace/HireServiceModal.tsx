@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { X } from "@phosphor-icons/react"
 import { ACTIVE_NETWORK_KEY, MEMBA_DAO, isEscrowValid, isServicesEnabled } from "../../lib/config"
 import { explorerHref } from "../../lib/explorerLink"
 import { formatUgnotExact } from "../../lib/dao/v2Budget"
-import { broadcastEscrowTx, escrowFailureMayHaveLanded, planHireService, type HirePlan } from "../../lib/marketplace/escrowTx"
+import { getCurrentBlock } from "../../lib/dao/proposalDates"
+import { broadcastEscrowTx, escrowFailureMayHaveLanded, formatUgnotExactBig, planHireService, type HirePlan } from "../../lib/marketplace/escrowTx"
+import { findCreatedContract, hireAvailability, readClientActiveCount, readCreatedCount, readEscrowPauseState } from "../../lib/marketplace/escrowState"
 import "../nft/TradeModal.css" // Reuse existing modal styles
 
 export interface Service {
@@ -22,10 +24,37 @@ export interface HireServiceModalProps {
     /** Connected wallet address; it becomes the escrow client. */
     caller: string
     onClose: () => void
-    onSuccess: () => void
+    /** Called once CreateContract landed, with the new contract's id when it could be read back (else null). */
+    onSuccess: (contractId: string | null) => void
 }
 
 const muted = { color: "var(--color-text-muted)", fontSize: "14px" }
+
+/** The realm's per-client cap and pause, read before offering to sign: "skip" when the lane is gated (nothing is sent then anyway). */
+type Preflight = { state: "skip" } | { state: "loading" } | { state: "ok" } | { state: "blocked"; reason: string }
+
+function useHirePreflight(caller: string): Preflight {
+    const live = isServicesEnabled() && isEscrowValid()
+    const [result, setResult] = useState<{ caller: string; preflight: Preflight } | null>(null)
+    useEffect(() => {
+        if (!live || !caller) return
+        let cancelled = false
+        Promise.all([readEscrowPauseState(MEMBA_DAO.escrowPath), readClientActiveCount(MEMBA_DAO.escrowPath, caller), getCurrentBlock()])
+            .then(([pause, active, height]) => {
+                const a = hireAvailability(pause, active, height)
+                return a.available ? { state: "ok" as const } : { state: "blocked" as const, reason: a.reason }
+            })
+            .catch((err: unknown) => ({
+                // Fail closed: without the pause state and the cap, the call may be refused after the fee is spent.
+                state: "blocked" as const,
+                reason: `Could not check the escrow contract's limits (${err instanceof Error ? err.message : String(err)}). Try again later.`,
+            }))
+            .then((preflight) => { if (!cancelled) setResult({ caller, preflight }) })
+        return () => { cancelled = true }
+    }, [live, caller])
+    if (!live || !caller) return { state: "skip" }
+    return result?.caller === caller ? result.preflight : { state: "loading" }
+}
 const rowStyle = { display: "flex", justifyContent: "space-between", marginBottom: "12px" }
 
 export function HireServiceModal({ service, caller, onClose, onSuccess }: HireServiceModalProps) {
@@ -45,31 +74,55 @@ export function HireServiceModal({ service, caller, onClose, onSuccess }: HireSe
             return { problem: err instanceof Error ? err.message : String(err) }
         }
     }, [caller, service])
+    const preflight = useHirePreflight(caller)
     const plan = "plan" in prepared ? prepared.plan : null
-    const banner = error ?? ("problem" in prepared ? prepared.problem : null)
+    const banner = error ?? ("problem" in prepared ? prepared.problem : null) ?? (preflight.state === "blocked" ? preflight.reason : null)
+    const preflightHolds = preflight.state === "loading" || preflight.state === "blocked"
 
     const handleHire = async () => {
-        // The services lane stays gated: escrow_v3 must be listed for this network and
+        // The services lane stays gated: the escrow realm must be listed for this network and
         // VITE_ENABLE_SERVICES on. Otherwise never broadcast; say so instead.
         if (!isServicesEnabled() || !isEscrowValid()) {
             setError("Service escrow is not available on this network yet.")
             return
         }
-        if (!plan || (uncertain && !confirmedNone)) return
+        if (!plan || preflightHolds || (uncertain && !confirmedNone)) return
         setError(null)
         setSubmitting(true)
+        // The next contract id, read before signing: after the call lands, only a
+        // contract at least this new can be the one it created.
+        let createdBefore: number | null = null
+        try {
+            createdBefore = await readCreatedCount(MEMBA_DAO.escrowPath)
+        } catch {
+            createdBefore = null
+        }
         try {
             await broadcastEscrowTx(plan, `Create escrow: ${service.title}`)
-            onSuccess()
         } catch (err) {
             if (escrowFailureMayHaveLanded(err)) {
                 setUncertain(true)
                 setConfirmedNone(false)
             }
             setError(err instanceof Error ? err.message : String(err))
-        } finally {
             setSubmitting(false)
+            return
         }
+        // The contract landed. CreateContract's return value does not reach the wallet
+        // reply, so read the client's newest contract back and check it is this one.
+        let contractId: string | null = null
+        try {
+            contractId = createdBefore === null ? null : await findCreatedContract(MEMBA_DAO.escrowPath, caller, createdBefore, {
+                freelancer: service.freelancer,
+                title: service.title,
+                description: service.description,
+                milestones: plan.milestones,
+            })
+        } catch {
+            contractId = null
+        }
+        setSubmitting(false)
+        onSuccess(contractId)
     }
 
     const contractsHref = explorerHref(ACTIVE_NETWORK_KEY, MEMBA_DAO.escrowPath)
@@ -121,17 +174,23 @@ export function HireServiceModal({ service, caller, onClose, onSuccess }: HireSe
                                     </span>
                                 </div>
                                 <p data-testid="hire-deposit-disclosure" style={{ ...muted, fontSize: "12px", margin: "0 0 12px" }}>
-                                    {`The storage deposit (up to ${formatUgnotExact(plan.maxDepositUgnot)}) is not refunded. Contracts are kept on-chain permanently.`}
+                                    {`The storage deposit (up to ${formatUgnotExact(plan.maxDepositUgnot)}; the chain locks only what the contract uses) is refunded to you when you archive the contract after it is completed or cancelled.`}
                                 </p>
                                 <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--color-border)", paddingTop: "12px", marginTop: "12px" }}>
                                     <span style={{ color: "var(--color-text)", fontWeight: 600 }}>Total to fund</span>
                                     <strong style={{ color: "var(--color-primary)", fontSize: "18px" }}>
-                                        {formatUgnotExact(plan.totalUgnot)}
+                                        {formatUgnotExactBig(plan.totalUgnot)}
                                     </strong>
                                 </div>
                             </>
                         )}
                     </div>
+
+                    {preflight.state === "loading" && (
+                        <p data-testid="hire-preflight-loading" style={{ ...muted, fontSize: "12px", margin: "0 0 12px" }}>
+                            Checking the escrow contract&apos;s pause state and your open contracts...
+                        </p>
+                    )}
 
                     {uncertain && (
                         <div className="k-error-banner" style={{ marginBottom: "16px" }}>
@@ -171,7 +230,7 @@ export function HireServiceModal({ service, caller, onClose, onSuccess }: HireSe
                             className="k-btn k-btn--primary"
                             style={{ flex: 1, justifyContent: "center" }}
                             onClick={handleHire}
-                            disabled={submitting || !plan || (uncertain && !confirmedNone)}
+                            disabled={submitting || !plan || preflightHolds || (uncertain && !confirmedNone)}
                         >
                             {submitting ? "Signing..." : uncertain ? "Create anyway" : "Sign Escrow Tx"}
                         </button>

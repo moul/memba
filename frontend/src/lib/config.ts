@@ -1298,13 +1298,31 @@ export function appStorePathFor(networkKey: string): string {
         || (networkKey === "mainnet" ? "gno.land/r/samcrew/memba_appstore_v3" : "gno.land/r/samcrew/memba_appstore_v2")
 }
 
+/** The escrow realm Memba signs for, and the only other one an override may select. */
+export const ESCROW_REALM_PATH_DEFAULT = "gno.land/r/samcrew/escrow_v4"
+const ESCROW_REALM_PATHS: readonly string[] = [ESCROW_REALM_PATH_DEFAULT, "gno.land/r/samcrew/escrow_v3"]
+
+/**
+ * VITE_ESCROW_REALM_PATH may only choose between escrow_v4 and escrow_v3 (the
+ * e2e fixtures pin v3, which test13 allowlists). Anything else falls back to
+ * v4 with a warning: a fund-custody path never comes from free-form config.
+ */
+export function resolveEscrowPath(override: string | undefined): string {
+    if (!override) return ESCROW_REALM_PATH_DEFAULT
+    if (ESCROW_REALM_PATHS.includes(override)) return override
+    console.warn(`VITE_ESCROW_REALM_PATH "${override}" is not an escrow realm Memba supports; using ${ESCROW_REALM_PATH_DEFAULT}`)
+    return ESCROW_REALM_PATH_DEFAULT
+}
+
 /** MembaDAO realm paths and deployment params. */
 export const MEMBA_DAO = {
     realmPath: "gno.land/r/samcrew/memba_dao",
     channelsPath: import.meta.env.VITE_CHANNELS_REALM_PATH || "gno.land/r/samcrew/memba_dao_channels_v2",
     candidaturePath: import.meta.env.VITE_CANDIDATURE_REALM_PATH || "gno.land/r/samcrew/memba_dao_candidature_v3",
     agentRegistryPath: "gno.land/r/samcrew/agent_registry_v2", // IsUserCall-guarded (v1 UseCredit was unguarded)
-    escrowPath: "gno.land/r/samcrew/escrow_v3", // IsUserCall-guarded (v2 FundMilestone was unguarded)
+    // escrow_v4: per-client cap, archive refunds, time-boxed pause (v3's lifetime cap could be filled for good).
+    // Not in any REALM_ALLOWLIST yet, so isEscrowValid() keeps the lane gated everywhere until go-live.
+    escrowPath: resolveEscrowPath(import.meta.env.VITE_ESCROW_REALM_PATH),
     nftMarketPath: "gno.land/r/samcrew/memba_nft_market_v2",
     nftCollectionsPath: "gno.land/r/samcrew/memba_collections", // Phase 2 launchpad registry (pending deploy)
     badgesPath: "gno.land/r/samcrew/gnobuilders_badges_v2",

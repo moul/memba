@@ -4,6 +4,7 @@ import { EmptyState } from "../ui/EmptyState"
 import { formatGnotCompact } from "../../lib/formatGnot"
 import { nftFallbackUri } from "../../lib/nftFallbackArt"
 import { HireServiceModal, type Service } from "./HireServiceModal"
+import { EscrowContractPanel } from "./EscrowContractPanel"
 import { ErrorToast } from "../ui/ErrorToast"
 
 // Real service listings will come from the on-chain services engine once the lane is
@@ -16,6 +17,8 @@ export default function ServiceLane() {
     
     const [hiringService, setHiringService] = useState<Service | null>(null)
     const [toast, setToast] = useState<string | null>(null)
+    // Bumped after a hire lands, so the contract panel re-reads "My contracts" and opens the new one.
+    const [created, setCreated] = useState<{ id: string | null; n: number }>({ id: null, n: 0 })
 
     const handleHireClick = (service: Service) => {
         if (!adena.connected || !adena.address) {
@@ -74,14 +77,19 @@ export default function ServiceLane() {
                 ))}
             </div>
 
+            <EscrowContractPanel caller={adena.connected ? adena.address : ""} createdContract={created} />
+
             {hiringService && (
                 <HireServiceModal 
                     service={hiringService}
                     caller={adena.address}
                     onClose={() => setHiringService(null)}
-                    onSuccess={() => {
+                    onSuccess={(contractId) => {
                         setHiringService(null)
-                        alert(`Success! Escrow contract created for ${hiringService.title}.`)
+                        setCreated((c) => ({ id: contractId, n: c.n + 1 }))
+                        alert(contractId
+                            ? `Success! Escrow contract ${contractId} created for ${hiringService.title}.`
+                            : `Success! Escrow contract created for ${hiringService.title}. It will appear under My contracts.`)
                     }}
                 />
             )}
