@@ -5,17 +5,31 @@
  * while a pause's blocking window is open, and neither broadcast while the
  * services lane is gated.
  */
-import { fireEvent, screen, waitFor, within } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { MemoryRouter } from "react-router-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { renderWithProviders } from "../../test/test-utils"
 import { EscrowContractPanel } from "./EscrowContractPanel"
 import type { EscrowContractsPage, EscrowContractView, EscrowPauseState } from "../../lib/marketplace/escrowState"
 
-const gate = vi.hoisted(() => ({ live: true }))
+const gate = vi.hoisted(() => ({ live: true, indexer: null as string | null }))
 vi.mock("../../lib/config", async (importOriginal) => ({
     ...(await importOriginal<typeof import("../../lib/config")>()),
     isServicesEnabled: () => gate.live,
     isEscrowValid: () => gate.live,
+    getIndexerUrl: () => gate.indexer,
+}))
+
+type Page = { ids: string[]; next: { top: number; belowId: number | null } | null }
+const indexer = vi.hoisted(() => ({ ids: [] as string[] | Error, pages: null as (Page | Promise<Page>)[] | null, calls: [] as unknown[][] }))
+vi.mock("../../lib/marketplace/escrowIndexer", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("../../lib/marketplace/escrowIndexer")>()),
+    findFreelancerContractsPage: async (...args: unknown[]) => {
+        indexer.calls.push(args)
+        if (indexer.ids instanceof Error) throw indexer.ids
+        if (indexer.pages) return indexer.pages[indexer.calls.length - 1]
+        return { ids: indexer.ids, next: null }
+    },
 }))
 
 const doContractBroadcast = vi.hoisted(() => vi.fn(async () => ({ hash: "TX" })))
@@ -79,6 +93,10 @@ const lookUp = async (caller: string, id = "7") => {
 
 beforeEach(() => {
     gate.live = true
+    gate.indexer = null
+    indexer.ids = []
+    indexer.pages = null
+    indexer.calls = []
     chain.contract = null
     chain.pause = OPEN
     chain.height = 2_000_000
@@ -117,11 +135,11 @@ describe("EscrowContractPanel — archive", () => {
         expect(screen.getByTestId("escrow-archive-client-only")).toHaveTextContent("Only the client can archive this contract.")
     })
 
-    it("disables archiving of an open contract", async () => {
+    it("does not offer archiving on an open contract", async () => {
         chain.contract = contract({ status: "active", milestones: [milestone("funded")] })
         await lookUp(CLIENT)
-        expect(screen.getByRole("button", { name: /archive and reclaim deposit/i })).toBeDisabled()
-        expect(screen.getByTestId("escrow-archive")).toHaveTextContent(/Only a completed or cancelled contract/)
+        expect(screen.queryByRole("button", { name: /archive/i })).not.toBeInTheDocument()
+        expect(screen.queryByTestId("escrow-archive")).not.toBeInTheDocument()
     })
 
     it("holds archiving inside a pause's blocking window and names the reopen block", async () => {
@@ -265,5 +283,88 @@ describe("EscrowContractPanel — My contracts", () => {
         await screen.findByTestId("escrow-contract-details")
         expect(readEscrowContract).toHaveBeenCalledWith(ESCROW, "13")
         expect(screen.getByLabelText("Contract id")).toHaveValue("13")
+    })
+})
+
+describe("EscrowContractPanel — contracts where I am the freelancer", () => {
+    it("lists only the indexer's ids that the chain confirms name the caller as freelancer", async () => {
+        gate.indexer = "https://api.example/api/indexer"
+        indexer.ids = ["9", "8", "5"]
+        readEscrowContract.mockImplementation(async (_p, id) => {
+            if (id === "9") return contract({ id: "9", title: "Logo", status: "active", milestones: [milestone("funded")] })
+            if (id === "8") return contract({ id: "8", freelancer: CLIENT, client: FREELANCER }) // the indexer was wrong
+            return null // archived
+        })
+        renderWithProviders(<EscrowContractPanel caller={FREELANCER} />)
+        const section = await screen.findByTestId("escrow-freelancer-contracts")
+        await waitFor(() => expect(within(section).getAllByRole("listitem")).toHaveLength(1))
+        expect(within(section).getByRole("listitem")).toHaveTextContent("#9Logo · active")
+        expect(indexer.calls[0]).toEqual(["https://api.example/api/indexer", expect.any(String), ESCROW, FREELANCER, null, expect.anything()])
+        fireEvent.click(within(section).getByRole("button", { name: "Open contract 9" }))
+        await screen.findByTestId("escrow-contract-details")
+        expect(screen.getByRole("button", { name: "Mark delivered" })).toBeEnabled()
+        readEscrowContract.mockImplementation(async () => chain.contract)
+    })
+
+    it("shows one page at a time and loads older ones on demand", async () => {
+        gate.indexer = "https://api.example/api/indexer"
+        indexer.pages = [
+            { ids: ["30", "29"], next: { top: 700_000, belowId: 29 } },
+            { ids: ["12"], next: null },
+        ]
+        readEscrowContract.mockImplementation(async (_p, id) => contract({ id, title: `Job ${id}`, status: "active", milestones: [milestone("funded")] }))
+        renderWithProviders(<EscrowContractPanel caller={FREELANCER} />)
+        const section = await screen.findByTestId("escrow-freelancer-contracts")
+        await waitFor(() => expect(within(section).getAllByRole("listitem")).toHaveLength(2))
+        fireEvent.click(within(section).getByRole("button", { name: "Load more" }))
+        await waitFor(() => expect(within(section).getAllByRole("listitem")).toHaveLength(3))
+        expect(within(section).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["#30Job 30 · active", "#29Job 29 · active", "#12Job 12 · active"])
+        expect(indexer.calls[1][4]).toEqual({ top: 700_000, belowId: 29 })
+        expect(within(section).queryByRole("button", { name: "Load more" })).not.toBeInTheDocument()
+        readEscrowContract.mockImplementation(async () => chain.contract)
+    })
+
+    it("drops a Load more answer that arrives after the wallet switched accounts", async () => {
+        gate.indexer = "https://api.example/api/indexer"
+        let answerA: (p: Page) => void = () => {}
+        indexer.pages = [
+            { ids: ["30"], next: { top: 700_000, belowId: 30 } }, // A, first page
+            new Promise<Page>((resolve) => { answerA = resolve }), // A, Load more (held)
+            { ids: ["40"], next: null }, // B, first page
+        ]
+        readEscrowContract.mockImplementation(async (_p, id) =>
+            contract({ id, title: `Job ${id}`, status: "active", freelancer: id === "40" ? CLIENT : FREELANCER, client: id === "40" ? FREELANCER : CLIENT, milestones: [milestone("funded")] }))
+        // Plain render: rerender must update props in place, as an account switch does (renderWithProviders' would remount).
+        const { rerender } = render(<EscrowContractPanel caller={FREELANCER} />, { wrapper: MemoryRouter })
+        const section = await screen.findByTestId("escrow-freelancer-contracts")
+        await waitFor(() => expect(within(section).getAllByRole("listitem")).toHaveLength(1))
+        fireEvent.click(within(section).getByRole("button", { name: "Load more" }))
+        await waitFor(() => expect(indexer.calls).toHaveLength(2))
+        const loadMoreSignal = indexer.calls[1][5] as AbortSignal
+
+        rerender(<EscrowContractPanel caller={CLIENT} />)
+        expect(loadMoreSignal.aborted).toBe(true)
+        await waitFor(() => expect(within(screen.getByTestId("escrow-freelancer-contracts")).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["#40Job 40 · active"]))
+
+        // A's page finally answers: it must not replace B's list.
+        await act(async () => { answerA({ ids: ["29"], next: null }) })
+        const after = screen.getByTestId("escrow-freelancer-contracts")
+        expect(within(after).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["#40Job 40 · active"])
+        expect(within(after).queryByText("Searching...")).not.toBeInTheDocument()
+        readEscrowContract.mockImplementation(async () => chain.contract)
+    })
+
+    it("says to ask for the link when the indexer cannot be searched", async () => {
+        gate.indexer = "https://api.example/api/indexer"
+        indexer.ids = new Error("indexer HTTP 502")
+        renderWithProviders(<EscrowContractPanel caller={FREELANCER} />)
+        expect(await screen.findByText(/Could not search for them \(indexer HTTP 502\)\. Ask the client for the contract's link\./)).toBeInTheDocument()
+    })
+
+    it("is not shown where the indexer does not serve this network", async () => {
+        renderWithProviders(<EscrowContractPanel caller={FREELANCER} />)
+        await screen.findByTestId("escrow-my-contracts")
+        expect(screen.queryByTestId("escrow-freelancer-contracts")).not.toBeInTheDocument()
+        expect(indexer.calls).toHaveLength(0)
     })
 })

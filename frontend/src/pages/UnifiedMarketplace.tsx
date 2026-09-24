@@ -4,7 +4,7 @@ import { ConnectingLoader } from "../components/ui/ConnectingLoader"
 import { ComingSoonGate } from "../components/ui/ComingSoonGate"
 import { getLiveLanes, getDefaultLaneSlug } from "../lib/marketplace/lanes"
 import { useAdena } from "../hooks/useAdena"
-import { isMarketplaceV2Enabled } from "../lib/config"
+import { isMarketplaceV2Active } from "../lib/marketplace/marketplaceV2"
 import { Image, Briefcase, Coins, Robot, Tag, type Icon } from "@phosphor-icons/react"
 import type { AssetType } from "../lib/marketplace/types"
 
@@ -14,6 +14,8 @@ const ServiceLane = lazy(() => import("../components/marketplace/ServiceLane"))
 const AgentLane = lazy(() => import("../components/marketplace/AgentLane"))
 const TokenLane = lazy(() => import("./TokenLane").then(m => ({ default: m.TokenLane })))
 const MyListingsView = lazy(() => import("../components/marketplace/MyListingsView"))
+// One escrow contract's shareable page (services/contract/:id), mounted with the Services lane.
+const EscrowContractPage = lazy(() => import("../components/marketplace/EscrowContractPage"))
 
 // marketplace-v2 lanes (rebuilt on LaneView/MarketCard). Behind VITE_ENABLE_MARKETPLACE_V2
 // so the old lanes stay the prod default until the flag flips at cutover.
@@ -35,7 +37,9 @@ import "./unified-marketplace.css"
 // assetType → the lane's UI. A lane only appears in the shell when getLiveLanes()
 // says it is live (flag + backing realm both valid on the active network), so a
 // gated lane is unreachable via both its tab and a direct URL (W0.1).
-const LANE_COMPONENTS: Record<AssetType, ComponentType> = isMarketplaceV2Enabled()
+// v2 only on test networks (isMarketplaceV2Active): its Services lane is the seed
+// catalogue with placeholder sellers, which must never render on mainnet.
+const laneComponents = (): Record<AssetType, ComponentType> => isMarketplaceV2Active()
     ? {
           nft: NftLaneV2,
           service: ServiceLaneV2,
@@ -84,8 +88,8 @@ const HERO_META: Record<string, { title: string; subtitle: string; chips: string
     },
     services: {
         title: "Freelance Services",
-        subtitle: "Hire talent with milestone escrow settled on-chain — funds release only when work is accepted.",
-        chips: ["Milestone escrow", "On-chain dispute freeze", "Fees fund the DAO"],
+        subtitle: "Hire talent with milestone escrow settled on-chain — each milestone is paid when the client accepts the work, or under the dispute and timeout rules.",
+        chips: ["Milestone escrow", "On-chain dispute freeze", "Fee only at release"],
     },
     agents: {
         title: "AI Agents",
@@ -106,6 +110,8 @@ export default function UnifiedMarketplace() {
 
     // Single source of truth: only lanes that are live on this network render.
     const liveLanes = getLiveLanes()
+    const v2 = isMarketplaceV2Active()
+    const components = laneComponents()
 
     // Show the "My Listings" tab only to a connected wallet with a live lane to
     // manage. The route itself stays mounted (it renders a connect prompt when
@@ -132,9 +138,11 @@ export default function UnifiedMarketplace() {
     // Roving tabindex (WAI-ARIA tabs): exactly one tab is in the page tab order —
     // the selected one, or the first tab while the shell is mid-redirect and no
     // lane is selected yet (all -1 would make the tablist keyboard-unreachable).
+    // A lane's own sub-pages (services/contract/:id) keep its tab selected.
+    const onLane = (slug: string) => pathname.endsWith(`/${slug}`) || pathname.includes(`/${slug}/`)
     const activeSlug = pathname.endsWith(`/${MY_LISTINGS_SLUG}`)
         ? MY_LISTINGS_SLUG
-        : liveLanes.find(l => pathname.endsWith(`/${l.slug}`))?.slug
+        : liveLanes.find(l => onLane(l.slug))?.slug
     const rovingSlug =
         activeSlug && (activeSlug !== MY_LISTINGS_SLUG || showMyListings)
             ? activeSlug
@@ -190,7 +198,7 @@ export default function UnifiedMarketplace() {
                                 // current URL (/marketplace/nfts + "services" → /nfts/services),
                                 // which the catch-all bounces straight back — tabs never switch.
                                 to={`${marketplaceBase}/${lane.slug}`}
-                                aria-selected={pathname.endsWith(`/${lane.slug}`)}
+                                aria-selected={onLane(lane.slug)}
                                 aria-controls="um-lane-panel"
                                 tabIndex={rovingSlug === lane.slug ? 0 : -1}
                                 className={({ isActive }) => `um-tab ${isActive ? "active" : ""}`}
@@ -216,7 +224,7 @@ export default function UnifiedMarketplace() {
                 </nav>
                 {/* v2 lanes own their search via the LaneToolbar — hide the shell search
                     to avoid two boxes bound to the same ?q. */}
-                {!isMarketplaceV2Enabled() && (
+                {!v2 && (
                     <div className="um-search">
                         <input
                             type="search"
@@ -247,9 +255,12 @@ export default function UnifiedMarketplace() {
                     <Routes>
                         <Route path="/" element={<Navigate to={defaultLanePath} replace />} />
                         {liveLanes.map((lane) => {
-                            const LaneComponent = LANE_COMPONENTS[lane.assetType]
+                            const LaneComponent = components[lane.assetType]
                             return <Route key={lane.assetType} path={lane.slug} element={<LaneComponent />} />
                         })}
+                        {liveLanes.some(l => l.assetType === "service") && (
+                            <Route path="services/contract/:contractId" element={<EscrowContractPage />} />
+                        )}
                         {/* My Listings management — mounts whenever a lane it manages is live
                             (the view itself prompts to connect when disconnected). */}
                         {canManageListings && (
