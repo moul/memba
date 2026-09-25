@@ -11,6 +11,7 @@ import { AbciQueryError } from "../rpcFallback"
 import { NETWORKS } from "../config"
 import { capabilitiesFor, clearDaoKindCache, isGovDAOPath, resolveDaoKind, GOVDAO_PATHS, MEMBA_V2_TEMPLATE_VERSION, type DaoKind } from "./kind"
 import { DAO_TEMPLATE_VERSION } from "../daoTemplate"
+import weightedV12 from "./testdata/weighted-v12/native.json"
 
 const evalMock = vi.mocked(queryEval)
 const renderMock = vi.mocked(queryRender)
@@ -137,6 +138,33 @@ describe("DAO kind", () => {
         clearDaoKindCache()
         chain({ weighted: qstr(JSON.stringify({ ...config, realmPath: "gno.land/r/samcrew/other" })), render: "# Founders" })
         expect(await resolveDaoKind(ctx("gno.land/r/samcrew/founders"))).toBe("unknown")
+    })
+
+    it("resolves the native v12 mainnet DAO from its config before any Render heuristic", async () => {
+        const render = weightedV12.records.render
+        chain({ weighted: qstr(JSON.stringify(weightedV12.records.config)), render })
+        expect(await resolveDaoKind(ctx("gno.land/r/samcrew/memba_dao", "gnoland-1"))).toBe("weighted")
+        expect(evalMock.mock.calls.map(c => c[2])).toEqual(["GetConfigJSON()"])
+        expect(evalMock.mock.calls[0][3]).toBe(true)
+        expect(renderMock).not.toHaveBeenCalled()
+        for (const network of [NETWORKS.mainnet, NETWORKS.pearl]) {
+            const c = capabilitiesFor("weighted", network)
+            expect([c.propose, c.vote, c.execute, c.channels, c.settings, c.treasury]).toEqual([[], false, false, false, false, false])
+        }
+    })
+
+    it("does not classify the native weighted Render by itself, and refuses unknown host versions", async () => {
+        chain({ render: weightedV12.records.render })
+        expect(await resolveDaoKind(ctx("gno.land/r/samcrew/memba_dao", "gnoland-1"))).toBe("unknown")
+        clearDaoKindCache()
+        chain({ weighted: qstr(JSON.stringify({ ...weightedV12.records.config, schema: "memba-weighted-host/v11" })), render: weightedV12.records.render })
+        expect(await resolveDaoKind(ctx("gno.land/r/samcrew/memba_dao", "gnoland-1"))).toBe("unknown")
+    })
+
+    it("probes weighted configs only at weighted paths", async () => {
+        chain({ weighted: qstr(JSON.stringify({ ...weightedV12.records.config, realmPath: "gno.land/r/alice/dao" })), api: qstr("1.0") })
+        expect(await resolveDaoKind(ctx("gno.land/r/alice/dao"))).toBe("memba-v1")
+        expect(evalMock.mock.calls.map(c => c[2])).not.toContain("GetConfigJSON()")
     })
 
     it("a realm whose path contains /gov/dao but is not exact resolves to its probed kind", async () => {
