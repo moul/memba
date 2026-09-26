@@ -103,6 +103,13 @@ function sitemapPlugin(): PluginOption {
   }
 }
 
+// Memba OS's self-hosted Manrope (src/os/fonts/*.woff2) is only reached via a
+// dynamic import() gated on OS_ENABLED, but Vite's CSS plugin emits url()
+// assets at transform time — before tree-shaking drops the (now orphaned)
+// dead OS chunk — so the fonts leak into a flag-off build as unreferenced
+// files. See the assetsInlineLimit override below.
+const osEnabledFor = (mode: string) => ({ ...loadEnv(mode, '..', 'VITE_'), ...process.env }).VITE_MEMBA_OS === 'true'
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
   envDir: '..', // Load .env from repo root (where all VITE_* vars live)
@@ -111,6 +118,7 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     sourcemap: true, // Required for Sentry source map uploads
+    assetsInlineLimit: osEnabledFor(mode) ? undefined : (filePath: string) => /manrope-latin-\d+-normal\.woff2$/.test(filePath) || undefined,
     rollupOptions: {
       output: {
         // Function form (BARRICADE 3D, PR-0c): unlike the object form, a module is

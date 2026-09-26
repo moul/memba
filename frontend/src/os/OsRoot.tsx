@@ -5,15 +5,18 @@
  *
  * @module os/OsRoot
  */
+import "./os-fonts.css"
 import "./os.css"
 import "./shell/shell.css"
+import "./classic-bridge.css"
 import "./kit/kit.css"
 import { Shell } from "./shell/Shell"
-import { useOsTheme } from "./theme"
+import { useClassicThemeSync, useOsTheme } from "./theme"
 import { DEFAULT_WALLPAPER } from "./wallpapers"
 
 export default function OsRoot() {
     const theme = useOsTheme()
+    useClassicThemeSync(theme)
     const wallpaper = DEFAULT_WALLPAPER
     return (
         <div
