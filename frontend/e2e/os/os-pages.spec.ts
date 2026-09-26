@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import AxeBuilder from '@axe-core/playwright'
 import { OS_ON } from '../../playwright.os.config'
 import { abortOnchainReads } from '../helpers/onchain'
 import { fulfillProValidatorRoster } from '../helpers/proValidatorsFixture'
@@ -29,12 +30,17 @@ test.describe('Memba OS pages in windows', () => {
         await expect(page.locator('.os-classic nav[aria-label="Main navigation"], .os-classic .k-sidebar')).toHaveCount(0)
     })
 
-    test('a page that redirects as it opens (NFT → the marketplace) opens the Market window that now owns it', async ({ page }) => {
+    test('the NFT window shows its own native home instead of opening Market by itself', async ({ page }) => {
         await page.goto(`${OS_ON}/os/nft`)
-        const market = win(page, 'Market')
-        await expect(market.getByRole('heading', { name: 'Marketplace' }).first()).toBeVisible()
-        await expect.poll(() => new URL(page.url()).pathname).toBe('/os/market/nfts')
-        await expect(page.getByRole('region', { name: 'NFT', exact: true })).toHaveCount(1)
+        const nft = win(page, 'NFT')
+        // This e2e's default network is gnoland-1 (mainnet): the NFT realms aren't
+        // live there yet, so the home explains that instead of the classic page.
+        await expect(nft.getByText(/isn't available yet/)).toBeVisible()
+        await expect.poll(() => new URL(page.url()).pathname).toBe('/os/nft')
+        await expect(page.getByRole('region', { name: 'Market', exact: true })).toHaveCount(0)
+        await nft.getByRole('button', { name: 'Open Market' }).click()
+        await expect(win(page, 'Market').getByRole('heading', { name: 'Marketplace' }).first()).toBeVisible()
+        await expect(win(page, 'NFT')).toBeVisible()
     })
 
     test("a page's own query (a Validators tab) works in its window, follows the address bar and survives Back and reload", async ({ page }) => {
@@ -120,3 +126,29 @@ test.describe('Memba OS pages in windows', () => {
         await expect(win(page, 'Send feedback')).toBeVisible()
     })
 })
+
+for (const view of [
+    { name: 'light', theme: 'light', width: 1400, height: 900 },
+    { name: 'dark', theme: 'dark', width: 1400, height: 900 },
+    { name: '420px', theme: 'light', width: 1400, height: 900, windowWidth: 420 },
+    { name: 'phone', theme: 'light', width: 375, height: 760 },
+] as const) {
+    test(`NFT home accessibility and layout · ${view.name}`, async ({ page }, testInfo) => {
+        await guest(page)
+        await page.emulateMedia({ colorScheme: view.theme, reducedMotion: 'reduce' })
+        await page.setViewportSize({ width: view.width, height: view.height })
+        await page.goto(`${OS_ON}/os/nft`)
+        const nft = win(page, 'NFT')
+        await expect(nft.getByText(/isn't available yet/)).toBeVisible()
+        if ('windowWidth' in view) {
+            await nft.evaluate((el, width) => { (el as HTMLElement).style.width = `${width}px` }, view.windowWidth)
+        }
+        const body = nft.locator('.os-wbody')
+        expect(await body.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+        const results = await new AxeBuilder({ page }).include('.memba-os').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
+        expect(results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')).toEqual([])
+        const screenshot = testInfo.outputPath(`nft-${view.name}.png`)
+        await page.screenshot({ path: screenshot })
+        await testInfo.attach(`nft-${view.name}`, { path: screenshot, contentType: 'image/png' })
+    })
+}
